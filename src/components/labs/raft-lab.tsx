@@ -1,8 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useApp } from "@/components/providers";
 import { LabShell } from "@/components/lab-shell";
+import { TryIt, Aha, MissionTracker } from "@/components/labs/ux";
 import type { Localized } from "@/lib/types";
 
 const N = 5;
@@ -76,9 +78,13 @@ export function RaftLab() {
   const { lang } = useApp();
   const tr = (o: Localized) => o[lang];
 
-  const [running, setRunning] = useState(true);
+  const [running, setRunning] = useState(false); // start paused — user presses ▶ to kick off the election
   const runningRef = useRef(running);
   useEffect(() => void (runningRef.current = running), [running]);
+
+  // ── gamification: elect, replicate, survive a leader crash ──────────
+  const [missions, setMissions] = useState({ elected: false, replicated: false, crash: false });
+  const allDone = missions.elected && missions.replicated && missions.crash;
 
   const nodesRef = useRef<RNode[]>(buildNodes());
   const committedRef = useRef<LogEntry[]>([]);
@@ -125,6 +131,7 @@ export function RaftLab() {
       node.votes = 0;
       addEv("up", { node: node.id });
     } else {
+      if (node.state === "leader") setMissions((m) => (m.crash ? m : { ...m, crash: true }));
       node.state = "down";
       addEv("down", { node: node.id });
     }
@@ -173,6 +180,7 @@ export function RaftLab() {
             if (aliveCount >= MAJORITY) {
               leader.commit = leader.log.length;
               committedRef.current = leader.log.slice(0, leader.commit);
+              if (committedRef.current.length > 0) setMissions((m) => (m.replicated ? m : { ...m, replicated: true }));
             }
           }
         }
@@ -187,6 +195,7 @@ export function RaftLab() {
               n.electionAt = Infinity;
               lastHbRef.current = 0; // heartbeat immediately next pass
               addEv("elected", { node: n.id, term: n.term });
+              setMissions((m) => (m.elected ? m : { ...m, elected: true }));
             } else {
               n.state = "follower";
               n.electionAt = now + randTimeout();
@@ -249,10 +258,20 @@ export function RaftLab() {
       title={{ en: "Raft Consensus", ar: "توافق Raft" }}
       difficulty="Expert"
       intro={{
-        en: "Five nodes agree on a single replicated log. Watch them elect a leader by majority vote, replicate proposed values, and — when you kill the leader — hold a fresh election with a higher term. This is how systems stay consistent despite crashes.",
-        ar: "خمس عُقَد تتّفق على سجل منسوخ واحد. شاهدها تنتخب قائداً بأغلبية الأصوات، تنسخ القيم المقترحة، وعند إيقاف القائد تُجري انتخاباً جديداً بفترة أعلى. هكذا تبقى الأنظمة متّسقة رغم الأعطال.",
+        en: "The problem from the Replication lab: when the leader dies, who takes over — and how do you stop two nodes from both believing they're in charge (split-brain)? Raft's answer is a vote. Five nodes elect ONE leader by majority; only the leader accepts writes and replicates them. Because every decision needs a majority (3 of 5), two leaders can never coexist. Run the three experiments below to drive a full election cycle.",
+        ar: "المشكلة من مختبر النسخ: لمّا يموت القائد، مين بياخد محلّه — وكيف بتمنع عقدتين تظنّوا حالهم القائد بنفس الوقت (split-brain)؟ جواب Raft تصويت. خمس عُقَد بتنتخب قائد **واحد** بالأغلبية؛ القائد بس بيقبل الكتابات وبينسخها. وبما إنّ كل قرار بدّه أغلبية (3 من 5)، مستحيل يصير قائدين بنفس الوقت. جرّب التجارب الثلاث تحت لتمشّي دورة انتخاب كاملة.",
       }}
     >
+      {/* ── Sticky mission tracker ────────────────────────────── */}
+      <MissionTracker
+        title="Experiments"
+        missions={[
+          { label: "Elect a leader", done: missions.elected },
+          { label: "Replicate a value", done: missions.replicated },
+          { label: "Kill the leader", done: missions.crash },
+        ]}
+      />
+
       {/* ── Controls ─────────────────────────────────────────── */}
       <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-slate-200 bg-white/60 p-4 dark:border-white/10 dark:bg-white/[0.03]">
         <button type="button" onClick={propose} className="rounded-lg bg-gradient-to-r from-indigo-500 to-cyan-500 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25">
@@ -264,6 +283,14 @@ export function RaftLab() {
         <button type="button" onClick={reset} className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-500 hover:bg-slate-100 dark:border-white/10 dark:text-slate-400 dark:hover:bg-white/5">↺ {tr(L.reset)}</button>
         <span className="text-xs text-slate-400">{tr(L.killHint)}</span>
       </div>
+
+      <TryIt
+        items={[
+          <>Press <b>▶ {tr(L.run)}</b> and wait — a follower times out, campaigns, and wins <b>{MAJORITY}/{N}</b> votes to become <b>{tr(L.leader)}</b>.</>,
+          <>Press <b>📥 {tr(L.propose)}</b> a few times — values replicate from the leader and appear in the committed log.</>,
+          <>Click the <b>👑 {tr(L.leader)}</b> node to kill it — watch the survivors run a new election with a higher term.</>,
+        ]}
+      />
 
       {/* ── Nodes ────────────────────────────────────────────── */}
       <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
@@ -292,6 +319,19 @@ export function RaftLab() {
           </button>
         ))}
       </div>
+
+      <Aha show={missions.elected}>
+        A follower&apos;s random timer ran out first, so it became a candidate, bumped the term, and
+        asked everyone for a vote. It got <b>{MAJORITY} of {N}</b> — a majority — so it&apos;s the
+        leader. The randomized timeouts are what stop all five from campaigning at once, and the
+        majority rule guarantees only one winner per term.
+      </Aha>
+      <Aha show={missions.crash}>
+        You killed the leader, so its heartbeats stopped. The remaining followers waited out
+        their timers, one campaigned with a <i>higher term</i>, and the survivors elected a new
+        leader — all on their own. As long as a majority (3 of 5) is alive, the cluster keeps
+        going. That&apos;s why clusters use an odd number: 5 nodes tolerate 2 failures.
+      </Aha>
 
       {/* ── Committed log ────────────────────────────────────── */}
       <div className="mt-5 rounded-2xl border border-slate-200 bg-white/60 p-5 dark:border-white/10 dark:bg-white/[0.03]">
@@ -326,6 +366,48 @@ export function RaftLab() {
       <p className="mt-5 rounded-2xl border border-slate-200 bg-white/60 p-5 text-sm leading-relaxed text-slate-600 dark:border-white/10 dark:bg-white/[0.03] dark:text-slate-400">
         {tr(L.about)}
       </p>
+
+      {/* ── Closing: what to explore next ─────────────────────── */}
+      <section
+        className={[
+          "mt-8 rounded-2xl border p-6 transition-colors",
+          allDone
+            ? "border-emerald-400/40 bg-emerald-500/5"
+            : "border-slate-200 bg-white/60 dark:border-white/10 dark:bg-white/[0.03]",
+        ].join(" ")}
+      >
+        <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+          {allDone ? "🎉 You ran a full Raft election cycle — elect, replicate, recover." : "This is the machinery behind a lot of what you've seen"}
+        </h2>
+        <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+          Consensus is how a cluster safely picks the leader that the Replication lab promoted
+          by hand — and it&apos;s the deepest answer to the &quot;agreement&quot; problem from the intro.
+          Loop back to see where it fits:
+        </p>
+        <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {[
+            {
+              fix: "Replication",
+              desc: "Raft is the real failover machinery — it elects the new primary instead of you clicking one.",
+              href: "/labs/replication",
+            },
+            {
+              fix: "The Three Horsemen",
+              desc: "Consensus is how machines agree under concurrency — the third horseman from the intro.",
+              href: "/labs/three-horsemen",
+            },
+          ].map((s) => (
+            <Link
+              key={s.fix}
+              href={s.href}
+              className="group rounded-xl border border-slate-200 bg-white p-4 transition-all hover:-translate-y-1 hover:border-indigo-300 hover:shadow-lg hover:shadow-indigo-500/10 dark:border-white/10 dark:bg-white/[0.03] dark:hover:border-indigo-400/40"
+            >
+              <p className="font-semibold text-slate-900 dark:text-white">{s.fix} →</p>
+              <p className="mt-1 text-xs leading-relaxed text-slate-500 dark:text-slate-400">{s.desc}</p>
+            </Link>
+          ))}
+        </div>
+      </section>
     </LabShell>
   );
 }
