@@ -1,8 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useApp } from "@/components/providers";
 import { LabShell } from "@/components/lab-shell";
+import { TryIt, Aha, MissionTracker } from "@/components/labs/ux";
 import { replicationInfo } from "@/lib/labs/replication";
 import type { Localized } from "@/lib/types";
 
@@ -74,6 +76,10 @@ export function ReplicationLab() {
   const [lag, setLag] = useState(1500);
   const [rate, setRate] = useState(1.5);
   const [running, setRunning] = useState(true);
+
+  // ── gamification: feel the consistency-vs-durability trade-off ──────
+  const [missions, setMissions] = useState({ stale: false, lost: false, safe: false });
+  const allDone = missions.stale && missions.lost && missions.safe;
 
   const modeRef = useRef(mode);
   const syncRef = useRef(sync);
@@ -167,6 +173,7 @@ export function ReplicationLab() {
     if (lost > 0) {
       lostRef.current += lost;
       writesRef.current = writesRef.current.slice(0, appliedRef.current[best]); // unreplicated writes are gone
+      setMissions((m) => (m.lost ? m : { ...m, lost: true }));
     }
     primaryRef.current = best;
     setSnap(buildSnapshot(now));
@@ -177,7 +184,9 @@ export function ReplicationLab() {
     if (downRef.current[i]) return;
     const primarySeq = writesRef.current.length;
     const applied = primaryRef.current === i ? primarySeq : replicaApplied(i, now);
-    readsRef.current.push({ seq: readSeqRef.current++, node: NODE_LABELS[i], value: applied, stale: applied < primarySeq });
+    const stale = applied < primarySeq;
+    readsRef.current.push({ seq: readSeqRef.current++, node: NODE_LABELS[i], value: applied, stale });
+    if (stale) setMissions((m) => (m.stale ? m : { ...m, stale: true }));
     setSnap(buildSnapshot(now));
   }, [replicaApplied, buildSnapshot]);
 
@@ -217,17 +226,27 @@ export function ReplicationLab() {
       title={{ en: "Replication Lab", ar: "مختبر النسخ المتماثل" }}
       difficulty="Advanced"
       intro={{
-        en: "Writes go to the primary and flow to the replicas. In async mode replicas lag behind — read one and you may get stale data. Then kill the primary and watch failover: with async you can lose the writes that hadn't replicated yet; with sync (or active) you lose nothing.",
-        ar: "الكتابات تذهب إلى الأساسي وتتدفّق إلى النسخ. في النمط غير المتزامن تتأخّر النسخ — اقرأ منها وقد تحصل على بيانات قديمة. ثم أوقف الأساسي وشاهد التبديل: مع غير المتزامن قد تفقد الكتابات التي لم تُنسخ بعد؛ ومع المتزامن (أو النشط) لا تفقد شيئاً.",
+        en: "The problem: if your data lives on one machine, a single disk failure wipes it out, and that one box has to serve every read. The fix is replication: keep copies on several nodes. But copies drift — writes hit the primary first and reach the replicas a moment later. That gap is where stale reads and lost writes hide. Run the three experiments below to feel the consistency-vs-durability trade-off.",
+        ar: "المشكلة: إذا بياناتك على جهاز واحد، عطل قرص واحد بيمحيها، وهداك الجهاز لحاله لازم يخدم كل القراءات. الحل النسخ المتماثل (replication): خلّي نسخ على كذا عقدة. بس النسخ بتتأخّر — الكتابة بتوصل الأساسي أول، وبعد لحظة بتوصل النسخ. هاي الفجوة هي مخبأ القراءات القديمة والكتابات المفقودة. جرّب التجارب الثلاث تحت لتحسّ بالمقايضة بين الاتساق والمتانة.",
       }}
     >
+      {/* ── Sticky mission tracker ────────────────────────────── */}
+      <MissionTracker
+        title="Experiments"
+        missions={[
+          { label: "Catch a stale read", done: missions.stale },
+          { label: "Lose a write on failover", done: missions.lost },
+          { label: "Make failover safe", done: missions.safe },
+        ]}
+      />
+
       {/* ── Controls ─────────────────────────────────────────── */}
       <div className="flex flex-wrap items-end gap-5 rounded-2xl border border-slate-200 bg-white/60 p-4 dark:border-white/10 dark:bg-white/[0.03]">
         <div className="flex flex-col gap-1.5">
           <span className="text-xs font-medium text-slate-500 dark:text-slate-400">{tr(L.mode)}</span>
           <div className="flex gap-1.5">
             {(["passive", "active"] as Mode[]).map((m) => (
-              <button key={m} type="button" onClick={() => setMode(m)} className={["rounded-lg px-3 py-2 text-sm font-medium transition-colors", mode === m ? "bg-indigo-500 text-white" : "border border-slate-200 text-slate-700 hover:bg-slate-100 dark:border-white/10 dark:text-slate-200 dark:hover:bg-white/5"].join(" ")}>
+              <button key={m} type="button" onClick={() => { setMode(m); if (m === "active") setMissions((x) => (x.safe ? x : { ...x, safe: true })); }} className={["rounded-lg px-3 py-2 text-sm font-medium transition-colors", mode === m ? "bg-indigo-500 text-white" : "border border-slate-200 text-slate-700 hover:bg-slate-100 dark:border-white/10 dark:text-slate-200 dark:hover:bg-white/5"].join(" ")}>
                 {m === "active" ? tr(L.active) : tr(L.passive)}
               </button>
             ))}
@@ -239,7 +258,7 @@ export function ReplicationLab() {
             <span className="text-xs font-medium text-slate-500 dark:text-slate-400">&nbsp;</span>
             <div className="flex gap-1.5">
               {[false, true].map((s) => (
-                <button key={String(s)} type="button" onClick={() => setSync(s)} className={["rounded-lg px-3 py-2 text-sm font-medium transition-colors", sync === s ? "bg-cyan-500 text-white" : "border border-slate-200 text-slate-700 hover:bg-slate-100 dark:border-white/10 dark:text-slate-200 dark:hover:bg-white/5"].join(" ")}>
+                <button key={String(s)} type="button" onClick={() => { setSync(s); if (s) setMissions((x) => (x.safe ? x : { ...x, safe: true })); }} className={["rounded-lg px-3 py-2 text-sm font-medium transition-colors", sync === s ? "bg-cyan-500 text-white" : "border border-slate-200 text-slate-700 hover:bg-slate-100 dark:border-white/10 dark:text-slate-200 dark:hover:bg-white/5"].join(" ")}>
                   {s ? tr(L.sync) : tr(L.async)}
                 </button>
               ))}
@@ -272,6 +291,14 @@ export function ReplicationLab() {
           <button type="button" onClick={reset} className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-500 hover:bg-slate-100 dark:border-white/10 dark:text-slate-400 dark:hover:bg-white/5">↺ {tr(L.reset)}</button>
         </div>
       </div>
+
+      <TryIt
+        items={[
+          <>Keep <b>{tr(L.passive)}</b> + <b>{tr(L.async)}</b>, let writes flow, then hit <b>📖 {tr(L.read)}</b> on a node that&apos;s <i>{tr(L.behind)}</i> — you&apos;ll get <b>{tr(L.stale)}</b> data.</>,
+          <>While replicas are still catching up, press <b>💥 {tr(L.killPrimary)}</b> and watch <b>{tr(L.lost)}</b> climb above zero.</>,
+          <>Now switch to <b>{tr(L.sync)}</b> (or <b>{tr(L.active)}</b> mode), repeat the kill, and see nothing is lost.</>,
+        ]}
+      />
 
       {/* ── Nodes ────────────────────────────────────────────── */}
       <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -339,6 +366,14 @@ export function ReplicationLab() {
         </div>
       </div>
 
+      <Aha show={missions.lost}>
+        Those writes existed on the primary but hadn&apos;t reached any replica yet. When the
+        primary died, the most up-to-date replica was promoted — and everything past its
+        version simply vanished. That&apos;s the price of <b>async</b> replication: fast writes,
+        but a crash can lose the last few. <b>Sync</b> replication waits for a replica to ack
+        before confirming, so a promoted replica always has the write — slower, but durable.
+      </Aha>
+
       {/* ── Read log ─────────────────────────────────────────── */}
       <div className="mt-5 rounded-2xl border border-slate-200 bg-white/60 p-5 dark:border-white/10 dark:bg-white/[0.03]">
         <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{tr(L.readLog)}</h3>
@@ -358,6 +393,14 @@ export function ReplicationLab() {
         )}
       </div>
 
+      <Aha show={missions.stale}>
+        The replica answered with an older version than the primary — not a bug, just lag.
+        The write simply hadn&apos;t arrived yet. This is <b>eventual consistency</b>: replicas
+        converge to the right value <i>eventually</i>. It&apos;s fine for a like count, dangerous
+        for a bank balance — which is why some reads are sent straight to the primary, or wait
+        for sync replication.
+      </Aha>
+
       {/* ── Explainer ────────────────────────────────────────── */}
       <div className="mt-5">
         <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{tr(L.explainer)}</h3>
@@ -370,6 +413,48 @@ export function ReplicationLab() {
           ))}
         </div>
       </div>
+
+      {/* ── Closing: what to explore next ─────────────────────── */}
+      <section
+        className={[
+          "mt-8 rounded-2xl border p-6 transition-colors",
+          allDone
+            ? "border-emerald-400/40 bg-emerald-500/5"
+            : "border-slate-200 bg-white/60 dark:border-white/10 dark:bg-white/[0.03]",
+        ].join(" ")}
+      >
+        <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+          {allDone ? "🎉 You've felt the consistency-vs-durability trade-off first-hand." : "Who decides which replica becomes the new primary?"}
+        </h2>
+        <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+          Here we just promoted the most up-to-date replica by hand. In reality the nodes have
+          to <i>agree</i> on a new leader — without two of them both thinking they&apos;re primary
+          (split-brain). That&apos;s a consensus problem. These continue the thread:
+        </p>
+        <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {[
+            {
+              fix: "Raft Consensus",
+              desc: "How a cluster elects one leader and keeps every replica's log identical — the real failover machinery.",
+              href: "/labs/raft",
+            },
+            {
+              fix: "Sharding",
+              desc: "Replication keeps copies of a slice; sharding decides how data is sliced in the first place.",
+              href: "/labs/sharding",
+            },
+          ].map((s) => (
+            <Link
+              key={s.fix}
+              href={s.href}
+              className="group rounded-xl border border-slate-200 bg-white p-4 transition-all hover:-translate-y-1 hover:border-indigo-300 hover:shadow-lg hover:shadow-indigo-500/10 dark:border-white/10 dark:bg-white/[0.03] dark:hover:border-indigo-400/40"
+            >
+              <p className="font-semibold text-slate-900 dark:text-white">{s.fix} →</p>
+              <p className="mt-1 text-xs leading-relaxed text-slate-500 dark:text-slate-400">{s.desc}</p>
+            </Link>
+          ))}
+        </div>
+      </section>
     </LabShell>
   );
 }
