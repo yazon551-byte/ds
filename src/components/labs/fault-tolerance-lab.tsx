@@ -1,8 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useApp } from "@/components/providers";
 import { LabShell } from "@/components/lab-shell";
+import { TryIt, Aha, MissionTracker } from "@/components/labs/ux";
 import {
   backoffDelay,
   breakerStates,
@@ -150,6 +152,14 @@ export function FaultToleranceLab() {
   const [rate, setRate] = useState(DEFAULTS.rate);
   const [running, setRunning] = useState(true);
 
+  // ── gamification: walk the breaker through its lifecycle ────────────
+  const [missions, setMissions] = useState({ tripped: false, protected: false, recovered: false });
+  const allDone = missions.tripped && missions.protected && missions.recovered;
+  // setState fns are stable, so this needs no deps and won't go stale
+  const markMission = useCallback((key: "tripped" | "protected" | "recovered") => {
+    setMissions((m) => (m[key] ? m : { ...m, [key]: true }));
+  }, []);
+
   // mirror to refs for the loop
   const failureRateRef = useRef(failureRate);
   const forcedDownRef = useRef(forcedDown);
@@ -291,6 +301,7 @@ export function FaultToleranceLab() {
               b.state = "CLOSED";
               b.halfOpenInFlight = false;
               pushLog({ kind: "close" });
+              markMission("recovered");
             }
             pushLog({ kind: "ok", reqId: op.id, attempts: op.attempt + 1 });
             op.done = true;
@@ -350,6 +361,10 @@ export function FaultToleranceLab() {
         healthRef.current = fails >= 2 ? "UNHEALTHY" : "HEALTHY";
       }
 
+      // gamification progress (gated — setMissions bails out when unchanged)
+      if (b.state !== "CLOSED") markMission("tripped");
+      if (m.fastFailed > 0) markMission("protected");
+
       const busy = runningRef.current || opsRef.current.length > 0 || b.state !== "CLOSED";
       if (busy && now - lastSnapRef.current >= 55) {
         lastSnapRef.current = now;
@@ -363,7 +378,7 @@ export function FaultToleranceLab() {
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [dispatchOne, buildSnapshot, pushLog]);
+  }, [dispatchOne, buildSnapshot, pushLog, markMission]);
 
   const sendOne = () => {
     dispatchOne(performance.now());
@@ -388,10 +403,20 @@ export function FaultToleranceLab() {
       title={{ en: "Fault Tolerance Console", ar: "لوحة تحمّل الأعطال" }}
       difficulty="Intermediate"
       intro={{
-        en: "Watch a circuit breaker protect a flaky service in real time. Crank up the failure rate (or force an outage) to trip it OPEN, see calls fast-fail to a fallback, then recover through HALF-OPEN — all while retries back off with jitter and a heartbeat tracks health.",
-        ar: "شاهد قاطع الدارة وهو يحمي خدمة متعثّرة لحظياً. ارفع نسبة الفشل (أو أسقِط الخدمة) ليقفز إلى «مفتوح»، وشاهد الطلبات تفشل فوراً نحو بديل، ثم تتعافى عبر «نصف مفتوح» — بينما تتراجع إعادة المحاولات بتشويش ويتتبّع النبض الصحّة.",
+        en: "The problem: a downstream service starts failing. If you keep hammering it, timeouts pile up and the failure spreads to your whole app — a cascading failure. The fix is a circuit breaker: after enough failures it trips OPEN and instantly fast-fails to a fallback, giving the service room to breathe, then carefully tests it (HALF-OPEN) before trusting it again. Run the three experiments below to take it through the full cycle.",
+        ar: "المشكلة: خدمة تعتمد عليها بدأت تفشل. إذا ضليت تضربها بالطلبات، بتتكدّس المهلات وبينتشر الفشل لكل تطبيقك — فشل متسلسل (cascading). الحل قاطع الدارة (circuit breaker): بعد عدد كافٍ من الأعطال بيقفز لـ «مفتوح» ويفشل الطلبات فوراً نحو بديل، فبيعطي الخدمة فرصة تتنفّس، وبعدين بيجرّبها بحذر (نصف مفتوح) قبل ما يثق فيها من جديد. جرّب التجارب الثلاث تحت لتمشّيه بالدورة كاملة.",
       }}
     >
+      {/* ── Sticky mission tracker ────────────────────────────── */}
+      <MissionTracker
+        title="Experiments"
+        missions={[
+          { label: "Trip the breaker", done: missions.tripped },
+          { label: "Fast-fail to fallback", done: missions.protected },
+          { label: "Recover (HALF-OPEN → CLOSED)", done: missions.recovered },
+        ]}
+      />
+
       {/* ── Controls ─────────────────────────────────────────── */}
       <div className="grid grid-cols-1 gap-4 rounded-2xl border border-slate-200 bg-white/60 p-4 sm:grid-cols-2 lg:grid-cols-4 dark:border-white/10 dark:bg-white/[0.03]">
         {/* service */}
@@ -460,6 +485,14 @@ export function FaultToleranceLab() {
         </div>
       </div>
 
+      <TryIt
+        items={[
+          <>Press <b>✕ {tr(L.forceOutage)}</b> (or drag <b>{tr(L.failRate)}</b> up high) and watch failures stack until the breaker flips to <b>OPEN</b>.</>,
+          <>While it&apos;s OPEN, notice new calls are <b>{tr(L.blocked)}</b> instantly — no waiting on the dead service.</>,
+          <>Press <b>✓ {tr(L.restore)}</b> and wait out the cooldown — the breaker probes once (HALF-OPEN) and closes again.</>,
+        ]}
+      />
+
       {/* ── Breaker state machine ────────────────────────────── */}
       <div className="mt-5 rounded-2xl border border-slate-200 bg-white/60 p-5 dark:border-white/10 dark:bg-white/[0.03]">
         <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-4">
@@ -505,6 +538,19 @@ export function FaultToleranceLab() {
             </div>
           </div>
         </div>
+
+        <Aha show={missions.tripped}>
+          Once consecutive failures hit the threshold, the breaker tripped to <b>OPEN</b>.
+          From now on it stops calling the broken service at all — instead of waiting for
+          each call to time out, it <i>fast-fails</i> straight to a fallback. That&apos;s what
+          stops one sick service from dragging your whole app down.
+        </Aha>
+        <Aha show={missions.recovered}>
+          After the cooldown the breaker didn&apos;t blindly trust the service again — it went
+          <b> HALF-OPEN</b> and let a single trial call through. That probe succeeded, so it
+          closed and resumed normal traffic. If the probe had failed, it would have snapped
+          back to OPEN and waited another cooldown. That cautious retry is the whole trick.
+        </Aha>
       </div>
 
       {/* ── Heartbeat ────────────────────────────────────────── */}
@@ -569,6 +615,48 @@ export function FaultToleranceLab() {
           ))}
         </div>
       </div>
+
+      {/* ── Closing: what to explore next ─────────────────────── */}
+      <section
+        className={[
+          "mt-8 rounded-2xl border p-6 transition-colors",
+          allDone
+            ? "border-emerald-400/40 bg-emerald-500/5"
+            : "border-slate-200 bg-white/60 dark:border-white/10 dark:bg-white/[0.03]",
+        ].join(" ")}
+      >
+        <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+          {allDone ? "🎉 You drove the breaker through its whole cycle." : "Surviving one failure isn't the whole story"}
+        </h2>
+        <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+          A circuit breaker protects <i>one</i> call to <i>one</i> service. But a real request
+          often touches many services in a row — and you need a plan for when step 3 of 5
+          fails after the first two already changed data. These pick up from here:
+        </p>
+        <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {[
+            {
+              fix: "Saga",
+              desc: "When a multi-step workflow fails halfway, undo the completed steps with compensating actions.",
+              href: "/labs/saga",
+            },
+            {
+              fix: "The Three Horsemen",
+              desc: "This module is the direct answer to the 'partial failure' horseman from the intro — revisit it.",
+              href: "/labs/three-horsemen",
+            },
+          ].map((s) => (
+            <Link
+              key={s.fix}
+              href={s.href}
+              className="group rounded-xl border border-slate-200 bg-white p-4 transition-all hover:-translate-y-1 hover:border-indigo-300 hover:shadow-lg hover:shadow-indigo-500/10 dark:border-white/10 dark:bg-white/[0.03] dark:hover:border-indigo-400/40"
+            >
+              <p className="font-semibold text-slate-900 dark:text-white">{s.fix} →</p>
+              <p className="mt-1 text-xs leading-relaxed text-slate-500 dark:text-slate-400">{s.desc}</p>
+            </Link>
+          ))}
+        </div>
+      </section>
     </LabShell>
   );
 }
