@@ -30,9 +30,12 @@ export default function Home() {
 
       {/* ── Modules ──────────────────────────────────────────── */}
       <section id="modules" className="mx-auto max-w-6xl scroll-mt-20 px-4 py-16 sm:px-6">
-        <h2 className="mb-8 text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+        <h2 className="mb-3 text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
           {t.modules_heading}
         </h2>
+        <p className="mb-8 max-w-3xl text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+          {t.modules_intro}
+        </p>
 
         <div className="flex flex-col gap-12">
           {categories.map((cat) => {
