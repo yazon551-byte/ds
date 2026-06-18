@@ -145,9 +145,9 @@ export function ShardingLab() {
         <div className="flex flex-col gap-1.5">
           <span className="text-xs font-medium text-slate-500 dark:text-slate-400">{tr(L.shards)}: <b className="text-slate-700 dark:text-slate-200">{n}</b></span>
           <div className="flex items-center gap-2">
-            <button type="button" onClick={() => setN((v) => Math.max(2, v - 1))} className="grid h-9 w-9 place-items-center rounded-lg border border-slate-200 text-lg font-bold text-slate-600 hover:bg-slate-100 dark:border-white/10 dark:text-slate-300 dark:hover:bg-white/5">−</button>
+            <button type="button" aria-label="Remove shard" onClick={() => setN((v) => Math.max(2, v - 1))} className="grid h-9 w-9 place-items-center rounded-lg border border-slate-200 text-lg font-bold text-slate-600 hover:bg-slate-100 dark:border-white/10 dark:text-slate-300 dark:hover:bg-white/5">−</button>
             <span className="w-6 text-center text-lg font-bold tabular-nums text-slate-800 dark:text-slate-100">{n}</span>
-            <button type="button" onClick={() => setN((v) => Math.min(6, v + 1))} className="grid h-9 w-9 place-items-center rounded-lg border border-slate-200 text-lg font-bold text-slate-600 hover:bg-slate-100 dark:border-white/10 dark:text-slate-300 dark:hover:bg-white/5">+</button>
+            <button type="button" aria-label="Add shard" onClick={() => setN((v) => Math.min(6, v + 1))} className="grid h-9 w-9 place-items-center rounded-lg border border-slate-200 text-lg font-bold text-slate-600 hover:bg-slate-100 dark:border-white/10 dark:text-slate-300 dark:hover:bg-white/5">+</button>
           </div>
         </div>
 

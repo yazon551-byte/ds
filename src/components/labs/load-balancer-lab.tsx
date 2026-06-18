@@ -434,7 +434,9 @@ export function LoadBalancerLab() {
       </div>
 
       {/* ── Visualization ────────────────────────────────────── */}
-      <div className="mt-5 rounded-2xl border border-slate-200 bg-white/60 p-5 dark:border-white/10 dark:bg-white/[0.03]">
+      <div className="mt-5 overflow-x-auto rounded-2xl border border-slate-200 bg-white/60 p-5 dark:border-white/10 dark:bg-white/[0.03]">
+        {/* dir=ltr keeps the diagram + packet animation aligned in RTL; min-w lets it scroll on phones */}
+        <div dir="ltr" className="min-w-[520px]">
         {/* LB node */}
         <div className="flex justify-center">
           <div className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-cyan-500 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25">
@@ -531,6 +533,7 @@ export function LoadBalancerLab() {
               </div>
             );
           })}
+        </div>
         </div>
       </div>
 

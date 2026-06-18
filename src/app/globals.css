@@ -54,6 +54,14 @@ html[lang="ar"] body {
   border-radius: 9999px;
 }
 
+/* Visible keyboard focus for accessibility (also overrides Tailwind's
+   transparent `outline-none` on inputs/selects when navigating by keyboard). */
+:focus-visible {
+  outline: 2px solid #6366f1;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
 /* Decorative grid + glow background used on the hero. */
 .bg-grid {
   background-image: linear-gradient(
