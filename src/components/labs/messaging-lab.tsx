@@ -1,8 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useApp } from "@/components/providers";
 import { LabShell } from "@/components/lab-shell";
+import { TryIt, Aha, MissionTracker } from "@/components/labs/ux";
 import { messagingInfo } from "@/lib/labs/messaging";
 import type { Localized } from "@/lib/types";
 
@@ -89,6 +91,10 @@ export function MessagingLab() {
   const [rate, setRate] = useState(1.5);
   const [running, setRunning] = useState(true);
 
+  // ── gamification: publish, poison, and watch the DLQ catch it ───────
+  const [missions, setMissions] = useState({ published: false, poison: false, dlq: false });
+  const allDone = missions.published && missions.poison && missions.dlq;
+
   const maxRetriesRef = useRef(maxRetries);
   const rateRef = useRef(rate);
   const runningRef = useRef(running);
@@ -129,6 +135,10 @@ export function MessagingLab() {
       if (s.queue.length < 60) s.queue.push({ msgId: id, poison, attempts: 0 });
     }
     mRef.current.published++;
+    setMissions((m) => {
+      if (poison) return m.poison ? m : { ...m, poison: true };
+      return m.published ? m : { ...m, published: true };
+    });
     setSnap(buildSnapshot());
   }, [buildSnapshot]);
 
@@ -197,6 +207,7 @@ export function MessagingLab() {
               if (dlqRef.current.length > 40) dlqRef.current = dlqRef.current.slice(-40);
               m.dead++;
               s.current = null;
+              setMissions((mm) => (mm.dlq ? mm : { ...mm, dlq: true }));
             } else {
               m.retried++;
               s.queue.push(item); // re-deliver (back of queue)
@@ -235,10 +246,20 @@ export function MessagingLab() {
       title={{ en: "Messaging & Pub/Sub", ar: "الرسائل و Pub/Sub" }}
       difficulty="Intermediate"
       intro={{
-        en: "Publish events to a broker and watch them fan out to every subscriber. Poison messages (☠) fail, get retried, and — once they hit the retry limit — are quarantined in the Dead-Letter Queue so they can't block the pipeline.",
-        ar: "انشر أحداثاً إلى وسيط وشاهدها تتوزّع على كل مشترك. الرسائل السامّة (☠) تفشل، يُعاد تسليمها، وعند بلوغ حدّ المحاولات تُعزَل في طابور الرسائل الميتة كي لا تعطّل الأنبوب.",
+        en: "The problem: a direct call forces the sender to wait for the receiver, and breaks if the receiver is down. The fix is messaging: the publisher drops an event into a broker and moves on; each subscriber consumes it on its own time, and messages wait safely if a consumer is offline. But a message that always fails (a poison ☠) would retry forever and block everyone — so after a few tries it's quarantined in a Dead-Letter Queue. Run the three experiments below.",
+        ar: "المشكلة: النداء المباشر بيجبر المُرسِل ينتظر المُستقبِل، وبينكسر إذا المُستقبِل واقع. الحل الرسائل (messaging): الناشر بيرمي حدث بالوسيط (broker) ويكمّل، وكل مشترك بيستهلكه على وقته، والرسائل بتنتظر بأمان إذا مستهلك أوفلاين. بس رسالة بتفشل دايماً (سامّة ☠) رح تعيد للأبد وتسدّ الطابور — لهيك بعد كم محاولة بتنعزل بطابور الرسائل الميتة (DLQ). جرّب التجارب الثلاث تحت.",
       }}
     >
+      {/* ── Sticky mission tracker ────────────────────────────── */}
+      <MissionTracker
+        title="Experiments"
+        missions={[
+          { label: "Publish & fan out", done: missions.published },
+          { label: "Send a poison ☠", done: missions.poison },
+          { label: "Fill the Dead-Letter Queue", done: missions.dlq },
+        ]}
+      />
+
       {/* ── Controls ─────────────────────────────────────────── */}
       <div className="flex flex-wrap items-end gap-4 rounded-2xl border border-slate-200 bg-white/60 p-4 dark:border-white/10 dark:bg-white/[0.03]">
         <button type="button" onClick={() => publish(false)} className="rounded-lg bg-indigo-500 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-600">
@@ -271,6 +292,14 @@ export function MessagingLab() {
 
         <button type="button" onClick={reset} className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-500 hover:bg-slate-100 dark:border-white/10 dark:text-slate-400 dark:hover:bg-white/5">↺ {tr(L.reset)}</button>
       </div>
+
+      <TryIt
+        items={[
+          <>Press <b>{tr(L.publishOk)}</b> and watch the same message land in <i>every</i> subscriber&apos;s queue at once.</>,
+          <>Press <b>{tr(L.publishBad)}</b> — it fails and gets re-queued (watch the <code>·{tr(L.retry)}</code> counter climb).</>,
+          <>Keep going until a poison message exhausts its retries and drops into the <b>{tr(L.dlq)}</b> below.</>,
+        ]}
+      />
 
       {/* ── Flow: publisher → topic → subscribers ────────────── */}
       <div className="mt-5 flex flex-col items-stretch gap-3 lg:flex-row lg:items-center">
@@ -318,6 +347,13 @@ export function MessagingLab() {
         </div>
       </div>
 
+      <Aha show={missions.published}>
+        One publish, and the broker copied that message into <i>every</i> subscriber&apos;s own
+        queue. The publisher never knew who the subscribers were — that&apos;s the decoupling: you
+        can add or remove consumers without touching the sender, and each works through its
+        backlog at its own pace.
+      </Aha>
+
       {/* ── Metrics ──────────────────────────────────────────── */}
       <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
         {metricCards.map((m) => (
@@ -344,6 +380,13 @@ export function MessagingLab() {
         )}
       </div>
 
+      <Aha show={missions.dlq}>
+        That poison message would have retried forever and clogged the queue behind it.
+        Instead, after hitting the retry limit it was moved aside into the Dead-Letter Queue —
+        the pipeline keeps flowing, and a human (or a separate job) can inspect the failures
+        later. Try lowering <b>{tr(L.maxRetries)}</b> and watch messages reach the DLQ faster.
+      </Aha>
+
       {/* ── Concepts ─────────────────────────────────────────── */}
       <div className="mt-5">
         <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{tr(L.concepts)}</h3>
@@ -356,6 +399,48 @@ export function MessagingLab() {
           ))}
         </div>
       </div>
+
+      {/* ── Closing: what to explore next ─────────────────────── */}
+      <section
+        className={[
+          "mt-8 rounded-2xl border p-6 transition-colors",
+          allDone
+            ? "border-emerald-400/40 bg-emerald-500/5"
+            : "border-slate-200 bg-white/60 dark:border-white/10 dark:bg-white/[0.03]",
+        ].join(" ")}
+      >
+        <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+          {allDone ? "🎉 You've published, poisoned, and dead-lettered." : "Events are the backbone of bigger workflows"}
+        </h2>
+        <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+          Once services talk through events instead of direct calls, you can chain them into
+          long workflows — and you need a plan for when one step fails. You also need to stop a
+          flood of messages from overwhelming a consumer. These continue the story:
+        </p>
+        <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {[
+            {
+              fix: "Saga",
+              desc: "Chain steps across services with events, and undo the finished ones when a later step fails.",
+              href: "/labs/saga",
+            },
+            {
+              fix: "Rate Limiter",
+              desc: "Cap how fast a consumer accepts work so a burst of messages can't overwhelm it.",
+              href: "/labs/rate-limiter",
+            },
+          ].map((s) => (
+            <Link
+              key={s.fix}
+              href={s.href}
+              className="group rounded-xl border border-slate-200 bg-white p-4 transition-all hover:-translate-y-1 hover:border-indigo-300 hover:shadow-lg hover:shadow-indigo-500/10 dark:border-white/10 dark:bg-white/[0.03] dark:hover:border-indigo-400/40"
+            >
+              <p className="font-semibold text-slate-900 dark:text-white">{s.fix} →</p>
+              <p className="mt-1 text-xs leading-relaxed text-slate-500 dark:text-slate-400">{s.desc}</p>
+            </Link>
+          ))}
+        </div>
+      </section>
     </LabShell>
   );
 }
