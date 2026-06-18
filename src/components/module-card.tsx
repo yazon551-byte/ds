@@ -69,9 +69,6 @@ export function ModuleCard({ module }: { module: ModuleMeta }) {
         >
           {t.difficulty[module.difficulty]}
         </span>
-        <span className="text-xs text-slate-500 dark:text-slate-500">
-          {t.lecture_label}: {module.lecture[lang]}
-        </span>
       </div>
 
       {ready && (

@@ -34,7 +34,7 @@ export const categories: CategoryMeta[] = [
 ];
 
 export const modules: ModuleMeta[] = [
-  // ── Foundations (Session 1) ────────────────────────────────────────────
+  // ── Foundations ────────────────────────────────────────────────────────
   {
     slug: "three-horsemen",
     title: { en: "The Three Horsemen", ar: "الفرسان الثلاثة" },
@@ -44,12 +44,11 @@ export const modules: ModuleMeta[] = [
     },
     category: "foundations",
     difficulty: "Beginner",
-    lecture: { en: "Session 1", ar: "المحاضرة 1" },
     icon: "🐎",
     status: "soon",
   },
 
-  // ── Load Balancing (Sessions 3–5) ──────────────────────────────────────
+  // ── Load Balancing ─────────────────────────────────────────────────────
   {
     slug: "load-balancer",
     title: { en: "Load Balancer Lab", ar: "مختبر موازنة الأحمال" },
@@ -59,9 +58,8 @@ export const modules: ModuleMeta[] = [
     },
     category: "load-balancing",
     difficulty: "Intermediate",
-    lecture: { en: "Sessions 3–5", ar: "المحاضرات 3–5" },
     icon: "⚖️",
-    status: "soon",
+    status: "ready",
   },
   {
     slug: "consistent-hashing",
@@ -72,12 +70,11 @@ export const modules: ModuleMeta[] = [
     },
     category: "load-balancing",
     difficulty: "Advanced",
-    lecture: { en: "Sessions 4–5", ar: "المحاضرات 4–5" },
     icon: "💍",
     status: "soon",
   },
 
-  // ── Fault Tolerance (Session 6) ────────────────────────────────────────
+  // ── Fault Tolerance ────────────────────────────────────────────────────
   {
     slug: "fault-tolerance",
     title: { en: "Fault Tolerance Console", ar: "لوحة تحمّل الأعطال" },
@@ -87,12 +84,11 @@ export const modules: ModuleMeta[] = [
     },
     category: "resilience",
     difficulty: "Intermediate",
-    lecture: { en: "Session 6", ar: "المحاضرة 6" },
     icon: "🛡️",
     status: "soon",
   },
 
-  // ── Data & Storage (Session 6) ─────────────────────────────────────────
+  // ── Data & Storage ─────────────────────────────────────────────────────
   {
     slug: "sharding",
     title: { en: "Sharding Visualizer", ar: "مُصوِّر التقسيم (Sharding)" },
@@ -102,7 +98,6 @@ export const modules: ModuleMeta[] = [
     },
     category: "data",
     difficulty: "Advanced",
-    lecture: { en: "Session 6", ar: "المحاضرة 6" },
     icon: "🧩",
     status: "soon",
   },
@@ -115,12 +110,11 @@ export const modules: ModuleMeta[] = [
     },
     category: "data",
     difficulty: "Advanced",
-    lecture: { en: "Session 6", ar: "المحاضرة 6" },
     icon: "🔁",
     status: "soon",
   },
 
-  // ── Communication (JavaRMI + Session 5) ────────────────────────────────
+  // ── Communication ──────────────────────────────────────────────────────
   {
     slug: "remote-invocation",
     title: { en: "Remote Invocation", ar: "الاستدعاء عن بُعد" },
@@ -130,7 +124,6 @@ export const modules: ModuleMeta[] = [
     },
     category: "communication",
     difficulty: "Intermediate",
-    lecture: { en: "Java RMI + Session 5", ar: "Java RMI + المحاضرة 5" },
     icon: "📡",
     status: "soon",
   },
@@ -143,12 +136,11 @@ export const modules: ModuleMeta[] = [
     },
     category: "communication",
     difficulty: "Intermediate",
-    lecture: { en: "Session 5", ar: "المحاضرة 5" },
     icon: "✉️",
     status: "soon",
   },
 
-  // ── Advanced (extra modules from the task site) ────────────────────────
+  // ── Advanced ───────────────────────────────────────────────────────────
   {
     slug: "raft",
     title: { en: "Raft Consensus", ar: "توافق Raft" },
@@ -158,7 +150,6 @@ export const modules: ModuleMeta[] = [
     },
     category: "advanced",
     difficulty: "Expert",
-    lecture: { en: "Bonus", ar: "إضافي" },
     icon: "🗳️",
     status: "soon",
   },
@@ -171,7 +162,6 @@ export const modules: ModuleMeta[] = [
     },
     category: "advanced",
     difficulty: "Expert",
-    lecture: { en: "Bonus", ar: "إضافي" },
     icon: "🧾",
     status: "soon",
   },
@@ -184,7 +174,6 @@ export const modules: ModuleMeta[] = [
     },
     category: "advanced",
     difficulty: "Intermediate",
-    lecture: { en: "Bonus", ar: "إضافي" },
     icon: "🚦",
     status: "soon",
   },

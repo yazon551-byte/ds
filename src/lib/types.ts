@@ -31,8 +31,6 @@ export interface ModuleMeta {
   tagline: Localized;
   category: CategoryId;
   difficulty: Difficulty;
-  /** Which lecture(s) this maps to. */
-  lecture: Localized;
   /** Emoji icon (no extra dependency needed). */
   icon: string;
   status: Status;
