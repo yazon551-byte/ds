@@ -9,14 +9,15 @@ export function LabShell({
   intro,
   children,
 }: {
-  // icon & difficulty are accepted (callers still pass them) but no longer shown.
+  // icon & difficulty are accepted (older callers still pass them) but no longer shown.
   icon?: string;
-  title: Localized;
-  intro: Localized;
+  title: string | Localized;
+  intro: string | Localized;
   difficulty?: Difficulty;
   children: React.ReactNode;
 }) {
   const { lang } = useApp();
+  const text = (v: string | Localized) => (typeof v === "string" ? v : v[lang]);
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
@@ -29,10 +30,10 @@ export function LabShell({
 
       <header className="mt-5 flex flex-col gap-3">
         <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl dark:text-white">
-          {title[lang]}
+          {text(title)}
         </h1>
         <p className="max-w-3xl text-pretty leading-relaxed text-slate-600 dark:text-slate-400">
-          {intro[lang]}
+          {text(intro)}
         </p>
       </header>
 

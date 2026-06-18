@@ -24,12 +24,6 @@ export default function Home() {
             <p className="mt-5 text-lg leading-relaxed text-slate-600 dark:text-slate-400">
               {t.hero_subtitle}
             </p>
-            <a
-              href="#modules"
-              className="mt-8 inline-block rounded-xl bg-gradient-to-r from-indigo-500 to-cyan-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 transition-transform hover:scale-[1.03]"
-            >
-              {t.hero_cta}
-            </a>
           </div>
         </div>
       </section>
