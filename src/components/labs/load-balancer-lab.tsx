@@ -147,7 +147,7 @@ export function LoadBalancerLab() {
   // ── controls (UI state) ────────────────────────────────────────────
   const [strategy, setStrategy] = useState<StrategyId>("round-robin");
   const [rate, setRate] = useState(8);
-  const [running, setRunning] = useState(true);
+  const [running, setRunning] = useState(false); // start paused — user presses ▶ when ready
 
   // ── gamification: objectives the user can complete by experimenting ──
   const [missions, setMissions] = useState({ burst: false, crash: false, strategy: false });
@@ -458,7 +458,7 @@ export function LoadBalancerLab() {
 
       <TryIt
         items={[
-          <>Press <b>{tr(L.burst)}</b> a few times and watch requests fan out to every server below.</>,
+          <>Press <b>▶ {tr(L.auto)}</b> to start traffic (or tap <b>{tr(L.burst)}</b>) and watch requests fan out to every server below.</>,
           <>Hit <b>{tr(L.kill)}</b> on a busy server — see traffic instantly shift to the survivors.</>,
           <>Change the <b>{tr(L.strategy)}</b> dropdown and compare the distribution bars.</>,
         ]}

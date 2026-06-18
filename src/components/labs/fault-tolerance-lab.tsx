@@ -150,7 +150,7 @@ export function FaultToleranceLab() {
   const [maxRetries, setMaxRetries] = useState(DEFAULTS.maxRetries);
   const [jitter, setJitter] = useState(DEFAULTS.jitter);
   const [rate, setRate] = useState(DEFAULTS.rate);
-  const [running, setRunning] = useState(true);
+  const [running, setRunning] = useState(false); // start paused — user presses ▶ when ready
 
   // ── gamification: walk the breaker through its lifecycle ────────────
   const [missions, setMissions] = useState({ tripped: false, protected: false, recovered: false });
@@ -487,7 +487,7 @@ export function FaultToleranceLab() {
 
       <TryIt
         items={[
-          <>Press <b>✕ {tr(L.forceOutage)}</b> (or drag <b>{tr(L.failRate)}</b> up high) and watch failures stack until the breaker flips to <b>OPEN</b>.</>,
+          <>Press <b>▶ {tr(L.auto)}</b> to start traffic, then <b>✕ {tr(L.forceOutage)}</b> (or drag <b>{tr(L.failRate)}</b> up high) and watch failures stack until the breaker flips to <b>OPEN</b>.</>,
           <>While it&apos;s OPEN, notice new calls are <b>{tr(L.blocked)}</b> instantly — no waiting on the dead service.</>,
           <>Press <b>✓ {tr(L.restore)}</b> and wait out the cooldown — the breaker probes once (HALF-OPEN) and closes again.</>,
         ]}

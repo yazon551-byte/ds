@@ -75,7 +75,7 @@ export function ReplicationLab() {
   const [sync, setSync] = useState(false);
   const [lag, setLag] = useState(1500);
   const [rate, setRate] = useState(1.5);
-  const [running, setRunning] = useState(true);
+  const [running, setRunning] = useState(false); // start paused — user presses ▶ when ready
 
   // ── gamification: feel the consistency-vs-durability trade-off ──────
   const [missions, setMissions] = useState({ stale: false, lost: false, safe: false });
@@ -294,7 +294,7 @@ export function ReplicationLab() {
 
       <TryIt
         items={[
-          <>Keep <b>{tr(L.passive)}</b> + <b>{tr(L.async)}</b>, let writes flow, then hit <b>📖 {tr(L.read)}</b> on a node that&apos;s <i>{tr(L.behind)}</i> — you&apos;ll get <b>{tr(L.stale)}</b> data.</>,
+          <>Keep <b>{tr(L.passive)}</b> + <b>{tr(L.async)}</b>, press <b>▶ {tr(L.auto)}</b> to start writes, then hit <b>📖 {tr(L.read)}</b> on a node that&apos;s <i>{tr(L.behind)}</i> — you&apos;ll get <b>{tr(L.stale)}</b> data.</>,
           <>While replicas are still catching up, press <b>💥 {tr(L.killPrimary)}</b> and watch <b>{tr(L.lost)}</b> climb above zero.</>,
           <>Now switch to <b>{tr(L.sync)}</b> (or <b>{tr(L.active)}</b> mode), repeat the kill, and see nothing is lost.</>,
         ]}

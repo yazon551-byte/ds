@@ -56,7 +56,7 @@ export function RateLimiterLab() {
   const [capacity, setCapacity] = useState(DEFAULTS.capacity);
   const [rate, setRate] = useState(DEFAULTS.rate);
   const [reqRate, setReqRate] = useState(DEFAULTS.reqRate);
-  const [running, setRunning] = useState(true);
+  const [running, setRunning] = useState(false); // start paused — user presses ▶ when ready
 
   // ── gamification: overflow the limiter and compare the two algorithms ─
   const [missions, setMissions] = useState({ rejected: false, burst: false, compared: false });
@@ -246,7 +246,7 @@ export function RateLimiterLab() {
 
       <TryIt
         items={[
-          <>Drag <b>{tr(L.reqRate)}</b> up past the <b>{isToken ? tr(L.refill) : tr(L.leak)}</b> rate and watch red <b>429</b> marks appear in <i>{tr(L.recent)}</i>.</>,
+          <>Press <b>▶ {tr(L.auto)}</b>, then drag <b>{tr(L.reqRate)}</b> up past the <b>{isToken ? tr(L.refill) : tr(L.leak)}</b> rate and watch red <b>429</b> marks appear in <i>{tr(L.recent)}</i>.</>,
           <>Pause auto traffic, then hit <b>{tr(L.burst)}</b> — Token Bucket lets a whole burst through at once (up to its capacity).</>,
           <>Switch to <b>{tr(L.leaky)}</b> and burst again — the output stays perfectly smooth instead.</>,
         ]}

@@ -89,7 +89,7 @@ export function MessagingLab() {
   const [subsCount, setSubsCount] = useState(3);
   const [maxRetries, setMaxRetries] = useState(2);
   const [rate, setRate] = useState(1.5);
-  const [running, setRunning] = useState(true);
+  const [running, setRunning] = useState(false); // start paused — user presses ▶ when ready
 
   // ── gamification: publish, poison, and watch the DLQ catch it ───────
   const [missions, setMissions] = useState({ published: false, poison: false, dlq: false });
