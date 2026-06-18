@@ -155,8 +155,8 @@ export function ThreeHorsemenLab() {
         <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">The app server is fine, but its database is down. The request half-completes and you&apos;re left in an UNKNOWN state: did it save or not?</p>
 
         <TryIt items={[
-          <>Click the database button until it reads <b>Database: down</b>.</>,
-          <>Press <b>Save data</b> and read the result.</>,
+          <>Press <b>🔌 Turn database off</b> (the diagram&apos;s Database turns red).</>,
+          <>Press <b>💾 Save data</b> and read the result.</>,
         ]} />
 
         {/* Controls — the buttons to click */}
