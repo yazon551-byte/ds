@@ -1,8 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { useApp } from "@/components/providers";
 import { LabShell } from "@/components/lab-shell";
+import { TryIt, Aha, MissionTracker } from "@/components/labs/ux";
 import {
   avgLatency,
   chooseServer,
@@ -147,6 +149,10 @@ export function LoadBalancerLab() {
   const [rate, setRate] = useState(8);
   const [running, setRunning] = useState(true);
 
+  // ── gamification: objectives the user can complete by experimenting ──
+  const [missions, setMissions] = useState({ burst: false, crash: false, strategy: false });
+  const allDone = missions.burst && missions.crash && missions.strategy;
+
   // mirror controls into refs for the animation loop
   const strategyRef = useRef(strategy);
   const rateRef = useRef(rate);
@@ -266,6 +272,7 @@ export function LoadBalancerLab() {
         s.down = true;
         s.active = 0;
         pushLog({ kind: "down", server: s.name, color: s.color, lost });
+        setMissions((m) => ({ ...m, crash: true }));
       } else {
         s.down = false;
         s.ewma = s.baseLatency;
@@ -361,10 +368,20 @@ export function LoadBalancerLab() {
       title={{ en: "Load Balancer Lab", ar: "مختبر موازنة الأحمال" }}
       difficulty="Intermediate"
       intro={{
-        en: "Pick a routing strategy, fire traffic, and watch requests get distributed across servers in real time. Kill a server to see the balancer react, and compare how each algorithm spreads the load.",
-        ar: "اختر خوارزمية توجيه، أطلق الترافيك، وشاهد توزيع الطلبات على الخوادم لحظياً. أوقف خادماً لترى كيف يتفاعل الموازِن، وقارن كيف توزّع كل خوارزمية الحِمل.",
+        en: "The problem: one server can't serve everyone — it slows to a crawl under load, and if it dies the whole site goes down. The fix is a load balancer: it sits in front of a pool of servers and spreads each request across them. Run the experiments in the tracker below to feel why it matters.",
+        ar: "المشكلة: خادم واحد ما بيكفي للكل — بيصير بطيء تحت الضغط، وإذا وقع بيوقع الموقع كلّه. الحل موازِن الأحمال: بيوقف قدّام مجموعة خوادم ويوزّع كل طلب عليها. جرّب التجارب بالمتتبّع تحت لتحسّ ليش بيفرق.",
       }}
     >
+      {/* ── Sticky mission tracker ────────────────────────────── */}
+      <MissionTracker
+        title="Experiments"
+        missions={[
+          { label: "Send a burst", done: missions.burst },
+          { label: "Crash a server", done: missions.crash },
+          { label: "Switch strategy", done: missions.strategy },
+        ]}
+      />
+
       {/* ── Controls ─────────────────────────────────────────── */}
       <div className="flex flex-wrap items-end gap-4 rounded-2xl border border-slate-200 bg-white/60 p-4 dark:border-white/10 dark:bg-white/[0.03]">
         <label className="flex flex-col gap-1.5">
@@ -373,7 +390,10 @@ export function LoadBalancerLab() {
           </span>
           <select
             value={strategy}
-            onChange={(e) => setStrategy(e.target.value as StrategyId)}
+            onChange={(e) => {
+              setStrategy(e.target.value as StrategyId);
+              setMissions((m) => ({ ...m, strategy: true }));
+            }}
             className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-800 outline-none focus:border-indigo-400 dark:border-white/10 dark:bg-[#0d1322] dark:text-slate-100"
           >
             {strategies.map((s) => (
@@ -418,7 +438,10 @@ export function LoadBalancerLab() {
           </button>
           <button
             type="button"
-            onClick={() => dispatchMany(20)}
+            onClick={() => {
+              dispatchMany(20);
+              setMissions((m) => ({ ...m, burst: true }));
+            }}
             className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition-colors hover:bg-slate-100 dark:border-white/10 dark:text-slate-200 dark:hover:bg-white/5"
           >
             {tr(L.burst)}
@@ -432,6 +455,14 @@ export function LoadBalancerLab() {
           </button>
         </div>
       </div>
+
+      <TryIt
+        items={[
+          <>Press <b>{tr(L.burst)}</b> a few times and watch requests fan out to every server below.</>,
+          <>Hit <b>{tr(L.kill)}</b> on a busy server — see traffic instantly shift to the survivors.</>,
+          <>Change the <b>{tr(L.strategy)}</b> dropdown and compare the distribution bars.</>,
+        ]}
+      />
 
       {/* ── Visualization ────────────────────────────────────── */}
       <div className="mt-5 overflow-x-auto rounded-2xl border border-slate-200 bg-white/60 p-5 dark:border-white/10 dark:bg-white/[0.03]">
@@ -537,6 +568,14 @@ export function LoadBalancerLab() {
         </div>
       </div>
 
+      <Aha show={missions.crash}>
+        The balancer stopped routing to the dead server the instant it went down —
+        new requests now flow only to the healthy ones (the in-flight requests it
+        was already handling are lost, which is why <i>Dropped</i> ticked up). That&apos;s the
+        whole point: no single server is a single point of failure. Health checks do
+        this automatically in production.
+      </Aha>
+
       {/* ── Metrics ──────────────────────────────────────────── */}
       <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         {metricCards.map((m) => (
@@ -612,6 +651,13 @@ export function LoadBalancerLab() {
               </div>
             </div>
           </dl>
+
+          <Aha show={missions.strategy}>
+            Same traffic, different split. Round-robin just takes turns, so every
+            server gets an equal share even if one is slower. Least-connections and
+            weighted strategies send more work to the servers that can actually handle
+            it — watch the distribution bars shift as you switch.
+          </Aha>
         </div>
       </div>
 
@@ -656,6 +702,48 @@ export function LoadBalancerLab() {
           </ul>
         )}
       </div>
+
+      {/* ── Closing: what to explore next ─────────────────────── */}
+      <section
+        className={[
+          "mt-8 rounded-2xl border p-6 transition-colors",
+          allDone
+            ? "border-emerald-400/40 bg-emerald-500/5"
+            : "border-slate-200 bg-white/60 dark:border-white/10 dark:bg-white/[0.03]",
+        ].join(" ")}
+      >
+        <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+          {allDone ? "🎉 Nice — you ran all three experiments." : "Spreading load is only step one"}
+        </h2>
+        <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+          A balancer routes around a server that&apos;s fully <i>dead</i> — but real
+          servers fail in messier ways: slow, flaky, half-broken. And spreading
+          requests doesn&apos;t spread the <i>data</i>. These modules pick up where this one ends:
+        </p>
+        <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {[
+            {
+              fix: "Fault Tolerance",
+              desc: "Retries, timeouts and circuit breakers for servers that are slow or flapping — not just fully down.",
+              href: "/labs/fault-tolerance",
+            },
+            {
+              fix: "Sharding",
+              desc: "Split the data itself across servers, so no single box holds (or serves) everything.",
+              href: "/labs/sharding",
+            },
+          ].map((s) => (
+            <Link
+              key={s.fix}
+              href={s.href}
+              className="group rounded-xl border border-slate-200 bg-white p-4 transition-all hover:-translate-y-1 hover:border-indigo-300 hover:shadow-lg hover:shadow-indigo-500/10 dark:border-white/10 dark:bg-white/[0.03] dark:hover:border-indigo-400/40"
+            >
+              <p className="font-semibold text-slate-900 dark:text-white">{s.fix} →</p>
+              <p className="mt-1 text-xs leading-relaxed text-slate-500 dark:text-slate-400">{s.desc}</p>
+            </Link>
+          ))}
+        </div>
+      </section>
     </LabShell>
   );
 }

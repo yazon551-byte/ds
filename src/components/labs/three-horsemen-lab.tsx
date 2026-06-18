@@ -3,35 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { LabShell } from "@/components/lab-shell";
+import { TryIt, Aha, MissionTracker } from "@/components/labs/ux";
 
 const LAT_LOCAL = 5;
 const LAT_REMOTE = 800;
-
-// ── small reusable UX bits ──────────────────────────────────────────────
-function TryIt({ items }: { items: React.ReactNode[] }) {
-  return (
-    <ol className="mt-4 flex flex-col gap-1.5 rounded-xl border border-indigo-200/70 bg-indigo-50/60 p-3.5 text-sm dark:border-indigo-400/20 dark:bg-indigo-500/[0.06]">
-      <span className="mb-0.5 text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-300">
-        👉 Try this
-      </span>
-      {items.map((it, i) => (
-        <li key={i} className="flex gap-2 text-slate-700 dark:text-slate-300">
-          <span className="font-semibold text-indigo-500">{i + 1}.</span>
-          <span>{it}</span>
-        </li>
-      ))}
-    </ol>
-  );
-}
-
-function Aha({ show, children }: { show: boolean; children: React.ReactNode }) {
-  if (!show) return null;
-  return (
-    <p className="mt-4 rounded-xl bg-emerald-500/10 p-3.5 text-sm leading-relaxed text-emerald-800 dark:text-emerald-300">
-      💡 <b>What just happened:</b> {children}
-    </p>
-  );
-}
 
 const SOLUTIONS = [
   { problem: "Latency", fix: "Load Balancer", desc: "Spread requests across servers and route around slow ones.", href: "/labs/load-balancer" },
@@ -87,34 +62,21 @@ export function ThreeHorsemenLab() {
   };
   const cReset = () => { setSeats(1); setCResults([]); };
 
-  const chip = (label: string, on: boolean) => (
-    <span className={["rounded-full px-3 py-1 text-xs font-semibold transition-colors", on ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" : "bg-slate-200/70 text-slate-500 dark:bg-white/10 dark:text-slate-400"].join(" ")}>
-      {on ? "✓ " : "○ "}{label}
-    </span>
-  );
-
   return (
     <LabShell
       title="The Three Horsemen"
       intro="No background needed. This page isn't about solutions yet — it's about feeling the three problems that make distributed systems hard. Cause each one below, then scroll down to see how we'll solve them."
     >
       {/* ── Sticky mission tracker (stays visible while scrolling) ─ */}
-      <div className="sticky top-16 z-40 -mx-4 mb-6 border-b border-slate-200 bg-white/85 px-4 py-3 backdrop-blur-md sm:-mx-6 sm:px-6 dark:border-white/10 dark:bg-[#060914]/85">
-        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-          <span className="text-sm font-semibold text-slate-900 dark:text-white">
-            🧭 Mission: trigger all three problems —{" "}
-            <span className="text-indigo-600 dark:text-indigo-400">{discoveredCount}/3 found</span>
-          </span>
-          <div className="flex flex-wrap items-center gap-2">
-            {chip("Latency", disc.latency)}
-            {chip("Partial Failure", disc.pf)}
-            {chip("Concurrency", disc.conc)}
-          </div>
-        </div>
-        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-200/70 dark:bg-white/10">
-          <div className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-emerald-500 transition-all duration-500" style={{ width: `${(discoveredCount / 3) * 100}%` }} />
-        </div>
-      </div>
+      <MissionTracker
+        title="Mission: trigger all three problems"
+        countLabel="found"
+        missions={[
+          { label: "Latency", done: disc.latency },
+          { label: "Partial Failure", done: disc.pf },
+          { label: "Concurrency", done: disc.conc },
+        ]}
+      />
 
       {/* ── 1. Latency ─────────────────────────────────────── */}
       <section className="mt-5 rounded-2xl border border-slate-200 bg-white/60 p-5 dark:border-white/10 dark:bg-white/[0.03]">
