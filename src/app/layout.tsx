@@ -26,7 +26,7 @@ export const metadata: Metadata = {
     "An interactive lab for learning distributed systems — load balancing, fault tolerance, sharding, replication, RPC and more.",
 };
 
-// Runs before hydration to apply the saved theme + language with no flash.
+// Runs before hydration to apply the saved theme with no flash.
 const noFlashScript = `(function(){try{var d=document.documentElement;var t=localStorage.getItem('dsl-theme');if(t==='light'){d.classList.remove('dark')}else{d.classList.add('dark')}}catch(e){document.documentElement.classList.add('dark')}})();`;
 
 export default function RootLayout({
