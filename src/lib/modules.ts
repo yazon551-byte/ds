@@ -151,7 +151,7 @@ export const modules: ModuleMeta[] = [
     category: "advanced",
     difficulty: "Expert",
     icon: "🧾",
-    status: "soon",
+    status: "ready",
   },
   {
     slug: "rate-limiter",
