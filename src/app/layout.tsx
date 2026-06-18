@@ -27,7 +27,7 @@ export const metadata: Metadata = {
 };
 
 // Runs before hydration to apply the saved theme + language with no flash.
-const noFlashScript = `(function(){try{var d=document.documentElement;var t=localStorage.getItem('dsl-theme');if(t==='light'){d.classList.remove('dark')}else{d.classList.add('dark')}var l=localStorage.getItem('dsl-lang')==='ar'?'ar':'en';d.lang=l;d.dir=l==='ar'?'rtl':'ltr';}catch(e){document.documentElement.classList.add('dark')}})();`;
+const noFlashScript = `(function(){try{var d=document.documentElement;var t=localStorage.getItem('dsl-theme');if(t==='light'){d.classList.remove('dark')}else{d.classList.add('dark')}}catch(e){document.documentElement.classList.add('dark')}})();`;
 
 export default function RootLayout({
   children,
