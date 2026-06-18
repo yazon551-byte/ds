@@ -7,7 +7,7 @@ export const ui = {
     hero_title: "Distributed Systems Lab",
     hero_subtitle:
       "A set of interactive simulations for core distributed-systems concepts — load balancing, fault tolerance, sharding, replication, messaging, and consensus.",
-    hero_download: "Download project explanation (PDF)",
+    hero_download: "Download project brief (PDF)",
     hero_view: "or read it in the browser",
     modules_heading: "Modules",
     modules_intro:

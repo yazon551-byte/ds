@@ -26,14 +26,14 @@ export default function Home() {
             </p>
             <div className="mt-7 flex flex-wrap items-center gap-4">
               <a
-                href="/project-explanation.pdf"
-                download="Distributed-Systems-Lab-Explanation.pdf"
+                href="/ds-tasks.pdf"
+                download="محمد يزن شديد.pdf"
                 className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-indigo-500 to-cyan-500 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 transition-transform hover:scale-[1.03]"
               >
                 📄 {t.hero_download}
               </a>
               <a
-                href="/project-explanation.html"
+                href="/ds-tasks.html"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-sm font-medium text-slate-500 underline-offset-4 transition-colors hover:text-indigo-500 hover:underline dark:text-slate-400"
