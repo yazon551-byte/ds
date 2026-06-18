@@ -1,0 +1,8 @@
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+# Official Netlify Next.js runtime — required to deploy a Next.js app
+# (it wires up SSR/serverless, image optimization, etc.).
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
