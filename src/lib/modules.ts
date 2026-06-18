@@ -85,7 +85,7 @@ export const modules: ModuleMeta[] = [
     category: "resilience",
     difficulty: "Intermediate",
     icon: "🛡️",
-    status: "soon",
+    status: "ready",
   },
 
   // ── Data & Storage ─────────────────────────────────────────────────────
