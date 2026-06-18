@@ -1,8 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { useApp } from "@/components/providers";
 import { LabShell } from "@/components/lab-shell";
+import { TryIt, Aha, MissionTracker } from "@/components/labs/ux";
 import { protocols, protoConfig, type Protocol } from "@/lib/labs/remote-invocation";
 import type { Localized } from "@/lib/types";
 
@@ -66,6 +68,10 @@ export function RemoteInvocationLab() {
   const [status, setStatus] = useState<Status>("idle");
   const [elapsed, setElapsed] = useState(0);
 
+  // ── gamification: see the call, compare protocols, break the network ─
+  const [missions, setMissions] = useState({ sent: false, compared: false, failed: false });
+  const allDone = missions.sent && missions.compared && missions.failed;
+
   const cfg = protoConfig(protocol);
   const stages = useMemo(() => buildStages(cfg.networkMs), [cfg.networkMs]);
   const cum = useMemo(() => {
@@ -96,11 +102,13 @@ export function RemoteInvocationLab() {
       if (dropRef.current && e >= failAtRef.current) {
         setElapsed(failAtRef.current);
         setStatus("failed");
+        setMissions((m) => (m.failed ? m : { ...m, failed: true }));
         return;
       }
       if (e >= totalRef.current) {
         setElapsed(totalRef.current);
         setStatus("done");
+        setMissions((m) => (m.sent ? m : { ...m, sent: true }));
         return;
       }
       setElapsed(e);
@@ -138,17 +146,27 @@ export function RemoteInvocationLab() {
       title={{ en: "Remote Invocation", ar: "الاستدعاء عن بُعد" }}
       difficulty="Intermediate"
       intro={{
-        en: "Watch a remote call travel: client → stub (marshal) → network → server skeleton → execute → back. Switch between Java RMI, REST and gRPC to compare payload size and speed — and drop the network to trigger the dreaded partial failure.",
-        ar: "شاهد نداءً بعيداً وهو يسافر: العميل → الـ stub (تسلسل) → الشبكة → skeleton الخادم → تنفيذ → عودة. بدّل بين Java RMI و REST و gRPC لمقارنة حجم الحمولة والسرعة — واقطع الشبكة لتفجير الفشل الجزئي.",
+        en: "The problem: calling a function on another machine looks like a normal method call, but it absolutely isn't. The arguments must be serialized (marshalled), shipped across the network, deserialized, run, and the result shipped all the way back. That hidden machinery — a stub on the client, a skeleton on the server — is what makes remote calls slow, and when the network drops mid-flight, leaves you with a partial failure you can't cleanly undo. Run the three experiments below to see it.",
+        ar: "المشكلة: مناداة دالة على جهاز تاني بتبيّن متل نداء عادي، بس أبداً مو هيك. لازم المعطيات تتسلسل (marshalling)، تنشحن عبر الشبكة، تتفكّك، تتنفّذ، والنتيجة ترجع كل الطريق. هاي الآلية المخفية — stub عند العميل و skeleton عند الخادم — هي اللي بتخلّي النداء البعيد بطيء، ولمّا تنقطع الشبكة بالنص بتتركك بفشل جزئي ما بتقدر تتراجع عنه بنظافة. جرّب التجارب الثلاث تحت لتشوفها.",
       }}
     >
+      {/* ── Sticky mission tracker ────────────────────────────── */}
+      <MissionTracker
+        title="Experiments"
+        missions={[
+          { label: "Complete a call", done: missions.sent },
+          { label: "Compare protocols", done: missions.compared },
+          { label: "Trigger partial failure", done: missions.failed },
+        ]}
+      />
+
       {/* ── Controls ─────────────────────────────────────────── */}
       <div className="flex flex-wrap items-end gap-4 rounded-2xl border border-slate-200 bg-white/60 p-4 dark:border-white/10 dark:bg-white/[0.03]">
         <div className="flex flex-col gap-1.5">
           <span className="text-xs font-medium text-slate-500 dark:text-slate-400">{tr(L.protocol)}</span>
           <div className="flex gap-1.5">
             {protocols.map((p) => (
-              <button key={p.id} type="button" onClick={() => { setProtocol(p.id); reset(); }} className={["rounded-lg px-3 py-2 text-sm font-medium transition-colors", protocol === p.id ? "text-white" : "border border-slate-200 text-slate-700 hover:bg-slate-100 dark:border-white/10 dark:text-slate-200 dark:hover:bg-white/5"].join(" ")} style={protocol === p.id ? { background: p.color } : undefined}>
+              <button key={p.id} type="button" onClick={() => { setProtocol(p.id); reset(); if (p.id !== "rmi") setMissions((m) => (m.compared ? m : { ...m, compared: true })); }} className={["rounded-lg px-3 py-2 text-sm font-medium transition-colors", protocol === p.id ? "text-white" : "border border-slate-200 text-slate-700 hover:bg-slate-100 dark:border-white/10 dark:text-slate-200 dark:hover:bg-white/5"].join(" ")} style={protocol === p.id ? { background: p.color } : undefined}>
                 {p.name}
               </button>
             ))}
@@ -162,6 +180,14 @@ export function RemoteInvocationLab() {
         </button>
         <button type="button" onClick={reset} className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-500 hover:bg-slate-100 dark:border-white/10 dark:text-slate-400 dark:hover:bg-white/5">↺ {tr(L.reset)}</button>
       </div>
+
+      <TryIt
+        items={[
+          <>Press <b>▶ {tr(L.send)}</b> and follow the request through all 8 stages until the result returns.</>,
+          <>Switch the <b>{tr(L.protocol)}</b> to <b>gRPC</b> and send again — compare the payload size and latency below.</>,
+          <>Turn on <b>{tr(L.dropNet)}</b>, then send: the call dies at the network hop — a partial failure.</>,
+        ]}
+      />
 
       {/* ── Pipeline ─────────────────────────────────────────── */}
       <div className="mt-5 rounded-2xl border border-slate-200 bg-white/60 p-5 dark:border-white/10 dark:bg-white/[0.03]">
@@ -210,6 +236,20 @@ export function RemoteInvocationLab() {
           {status === "running" && <span className="text-sm text-slate-400">{tr(L.sending)}</span>}
         </div>
       </div>
+
+      <Aha show={missions.sent}>
+        Notice how many steps a single &quot;function call&quot; really took: marshal the args, cross
+        the network, unmarshal, run, marshal the result, cross back, unmarshal. The whole
+        point of a stub/skeleton is to <i>hide</i> all that so remote calls look local — but
+        the network time never goes away. That illusion is exactly why remote calls quietly
+        cost 100–1000× a local one.
+      </Aha>
+      <Aha show={missions.failed}>
+        The call vanished at the network hop. Here&apos;s the nasty part: the client got a
+        <code> ConnectException</code>, but it has <b>no idea</b> whether the server already ran
+        the method or never got the request. Re-sending might run it twice. This is the
+        partial-failure problem — and why remote APIs need timeouts, retries, and idempotency.
+      </Aha>
 
       {/* ── Current protocol stats ───────────────────────────── */}
       <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -261,6 +301,48 @@ export function RemoteInvocationLab() {
           gRPC payload is <b className="text-emerald-600 dark:text-emerald-400">~{grpcSmaller}%</b> {tr(L.smaller)}.
         </p>
       </div>
+
+      {/* ── Closing: what to explore next ─────────────────────── */}
+      <section
+        className={[
+          "mt-8 rounded-2xl border p-6 transition-colors",
+          allDone
+            ? "border-emerald-400/40 bg-emerald-500/5"
+            : "border-slate-200 bg-white/60 dark:border-white/10 dark:bg-white/[0.03]",
+        ].join(" ")}
+      >
+        <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+          {allDone ? "🎉 You've seen what a remote call really costs." : "Blocking and waiting isn't the only option"}
+        </h2>
+        <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+          A request/response call makes the client sit and wait — and inherit the partial-failure
+          problem you just triggered. Sometimes it&apos;s better to drop a message in a queue and move
+          on, or to wrap the risky call in protection. These continue the story:
+        </p>
+        <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {[
+            {
+              fix: "Messaging & Pub/Sub",
+              desc: "Decouple sender from receiver with a queue — no blocking, and the message survives if the receiver is down.",
+              href: "/labs/messaging",
+            },
+            {
+              fix: "Fault Tolerance",
+              desc: "Timeouts, retries and circuit breakers — exactly what that ConnectException needs.",
+              href: "/labs/fault-tolerance",
+            },
+          ].map((s) => (
+            <Link
+              key={s.fix}
+              href={s.href}
+              className="group rounded-xl border border-slate-200 bg-white p-4 transition-all hover:-translate-y-1 hover:border-indigo-300 hover:shadow-lg hover:shadow-indigo-500/10 dark:border-white/10 dark:bg-white/[0.03] dark:hover:border-indigo-400/40"
+            >
+              <p className="font-semibold text-slate-900 dark:text-white">{s.fix} →</p>
+              <p className="mt-1 text-xs leading-relaxed text-slate-500 dark:text-slate-400">{s.desc}</p>
+            </Link>
+          ))}
+        </div>
+      </section>
     </LabShell>
   );
 }
