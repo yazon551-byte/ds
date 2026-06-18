@@ -45,7 +45,7 @@ export const modules: ModuleMeta[] = [
     category: "foundations",
     difficulty: "Beginner",
     icon: "🐎",
-    status: "soon",
+    status: "ready",
   },
 
   // ── Load Balancing ─────────────────────────────────────────────────────
@@ -60,18 +60,6 @@ export const modules: ModuleMeta[] = [
     difficulty: "Intermediate",
     icon: "⚖️",
     status: "ready",
-  },
-  {
-    slug: "consistent-hashing",
-    title: { en: "Consistent Hashing Ring", ar: "حلقة التجزئة الثابتة" },
-    tagline: {
-      en: "Add and remove nodes on a hash ring and see how few keys actually move.",
-      ar: "أضف واحذف عُقَد على حلقة التجزئة وشوف كم مفتاح فعلاً بيتحرّك.",
-    },
-    category: "load-balancing",
-    difficulty: "Advanced",
-    icon: "💍",
-    status: "soon",
   },
 
   // ── Fault Tolerance ────────────────────────────────────────────────────
