@@ -137,7 +137,7 @@ export const modules: ModuleMeta[] = [
     category: "communication",
     difficulty: "Intermediate",
     icon: "✉️",
-    status: "soon",
+    status: "ready",
   },
 
   // ── Advanced ───────────────────────────────────────────────────────────
