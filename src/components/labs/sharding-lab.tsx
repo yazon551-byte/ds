@@ -1,8 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { useApp } from "@/components/providers";
 import { LabShell } from "@/components/lab-shell";
+import { TryIt, Aha, MissionTracker } from "@/components/labs/ux";
 import {
   KEY_SPACE,
   SHARD_COLORS,
@@ -59,6 +61,10 @@ export function ShardingLab() {
   const [strategy, setStrategy] = useState<ShardStrategy>("hash");
   const [n, setN] = useState(4);
   const [inputKey, setInputKey] = useState("");
+
+  // ── gamification: explore the three core sharding ideas ─────────────
+  const [missions, setMissions] = useState({ traced: false, switched: false, resized: false });
+  const allDone = missions.traced && missions.switched && missions.resized;
 
   // directory mapping: an explicit lookup table (here, a balanced round-robin
   // assignment) — the point is it's arbitrary and you control it.
@@ -120,10 +126,20 @@ export function ShardingLab() {
       title={{ en: "Sharding Visualizer", ar: "مُصوِّر التقسيم" }}
       difficulty="Advanced"
       intro={{
-        en: "Split data across shards and watch exactly where each key lands. Switch strategies, add or remove a shard, and see the killer difference: plain hashing reshuffles almost everything, while consistent hashing barely moves a thing.",
-        ar: "وزّع البيانات على أقسام وشاهد بالضبط أين يذهب كل مفتاح. بدّل الاستراتيجيات، أضف أو احذف قسماً، وشاهد الفرق الحاسم: التجزئة العادية تعيد خلط كل شيء تقريباً، بينما الثابتة بالكاد تحرّك شيئاً.",
+        en: "The problem: your data no longer fits on one machine — so you split it across several (shards). But which row goes where, and what happens when you add a machine later? Trace where keys land under each strategy, then resize the cluster to uncover the killer difference: plain hashing reshuffles almost everything, while consistent hashing barely moves a thing. Work through the three experiments below.",
+        ar: "المشكلة: بياناتك ما عادت تكفي على جهاز واحد — فبنقسّمها على كذا جهاز (shards). بس أي صفّ بيروح وين؟ وشو بيصير لمّا تضيف جهاز بعدين؟ تتبّع وين بتقع المفاتيح بكل استراتيجية، وبعدين غيّر حجم الكلاستر لتكتشف الفرق الحاسم: التجزئة العادية بتعيد خلط كل شي تقريباً، بينما الثابتة بالكاد بتحرّك شي. جرّب التجارب الثلاث تحت.",
       }}
     >
+      {/* ── Sticky mission tracker ────────────────────────────── */}
+      <MissionTracker
+        title="Experiments"
+        missions={[
+          { label: "Trace a key", done: missions.traced },
+          { label: "Switch strategy", done: missions.switched },
+          { label: "Resize the cluster", done: missions.resized },
+        ]}
+      />
+
       {/* ── Controls ─────────────────────────────────────────── */}
       <div className="flex flex-wrap items-end justify-between gap-4 rounded-2xl border border-slate-200 bg-white/60 p-4 dark:border-white/10 dark:bg-white/[0.03]">
         <div className="flex flex-col gap-1.5">
@@ -133,7 +149,10 @@ export function ShardingLab() {
               <button
                 key={s.id}
                 type="button"
-                onClick={() => setStrategy(s.id)}
+                onClick={() => {
+                  setStrategy(s.id);
+                  if (s.id !== "hash") setMissions((m) => (m.switched ? m : { ...m, switched: true }));
+                }}
                 className={["rounded-lg px-3 py-2 text-sm font-medium transition-colors", strategy === s.id ? "bg-indigo-500 text-white" : "border border-slate-200 text-slate-700 hover:bg-slate-100 dark:border-white/10 dark:text-slate-200 dark:hover:bg-white/5"].join(" ")}
               >
                 {tr(s.name)}
@@ -145,9 +164,9 @@ export function ShardingLab() {
         <div className="flex flex-col gap-1.5">
           <span className="text-xs font-medium text-slate-500 dark:text-slate-400">{tr(L.shards)}: <b className="text-slate-700 dark:text-slate-200">{n}</b></span>
           <div className="flex items-center gap-2">
-            <button type="button" aria-label="Remove shard" onClick={() => setN((v) => Math.max(2, v - 1))} className="grid h-9 w-9 place-items-center rounded-lg border border-slate-200 text-lg font-bold text-slate-600 hover:bg-slate-100 dark:border-white/10 dark:text-slate-300 dark:hover:bg-white/5">−</button>
+            <button type="button" aria-label="Remove shard" onClick={() => { setN((v) => Math.max(2, v - 1)); setMissions((m) => (m.resized ? m : { ...m, resized: true })); }} className="grid h-9 w-9 place-items-center rounded-lg border border-slate-200 text-lg font-bold text-slate-600 hover:bg-slate-100 dark:border-white/10 dark:text-slate-300 dark:hover:bg-white/5">−</button>
             <span className="w-6 text-center text-lg font-bold tabular-nums text-slate-800 dark:text-slate-100">{n}</span>
-            <button type="button" aria-label="Add shard" onClick={() => setN((v) => Math.min(6, v + 1))} className="grid h-9 w-9 place-items-center rounded-lg border border-slate-200 text-lg font-bold text-slate-600 hover:bg-slate-100 dark:border-white/10 dark:text-slate-300 dark:hover:bg-white/5">+</button>
+            <button type="button" aria-label="Add shard" onClick={() => { setN((v) => Math.min(6, v + 1)); setMissions((m) => (m.resized ? m : { ...m, resized: true })); }} className="grid h-9 w-9 place-items-center rounded-lg border border-slate-200 text-lg font-bold text-slate-600 hover:bg-slate-100 dark:border-white/10 dark:text-slate-300 dark:hover:bg-white/5">+</button>
           </div>
         </div>
 
@@ -158,12 +177,24 @@ export function ShardingLab() {
             min={0}
             max={999}
             value={inputKey}
-            onChange={(e) => setInputKey(e.target.value)}
+            onChange={(e) => {
+              setInputKey(e.target.value);
+              if (!Number.isNaN(parseInt(e.target.value, 10)))
+                setMissions((m) => (m.traced ? m : { ...m, traced: true }));
+            }}
             placeholder={tr(L.keyHint)}
             className="w-48 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:border-indigo-400 dark:border-white/10 dark:bg-[#0d1322] dark:text-slate-100"
           />
         </div>
       </div>
+
+      <TryIt
+        items={[
+          <>Type a user ID (e.g. <b>42</b>) in <b>{tr(L.lookup)}</b> and read the formula that places it.</>,
+          <>Switch <b>{tr(L.strategy)}</b> to <b>Consistent</b> and watch the hash ring appear.</>,
+          <>Press <b>+</b> or <b>−</b> to resize, then compare the Hash vs Consistent move % below.</>,
+        ]}
+      />
 
       {/* ── Lookup result ───────────────────────────────────── */}
       {validKey && targetShard !== null && (
@@ -177,6 +208,13 @@ export function ShardingLab() {
           <code className="rounded bg-slate-900/5 px-2 py-1 font-mono text-xs text-slate-600 dark:bg-white/5 dark:text-slate-300">{steps}</code>
         </div>
       )}
+
+      <Aha show={missions.traced}>
+        That little formula is the whole point: any server can compute where a key lives
+        without asking a central index (except the Directory strategy, which keeps an
+        explicit lookup table). Hash and consistent both turn the key into a number; range
+        just checks which interval it falls in.
+      </Aha>
 
       {/* ── Shard columns ───────────────────────────────────── */}
       <div className="mt-5 grid gap-3" style={{ gridTemplateColumns: `repeat(${Math.min(n, 3)}, minmax(0,1fr))` }}>
@@ -276,6 +314,14 @@ export function ShardingLab() {
         </div>
       </div>
 
+      <Aha show={missions.resized}>
+        Look at the Hash vs Consistent numbers. Plain <code>hash(key) % N</code> depends on
+        N, so changing the shard count rewrites <i>almost every</i> key&apos;s home — a massive,
+        slow data migration. Consistent hashing places shards on a ring, so adding or
+        removing one only moves the keys in that one arc (~1/N of them). That&apos;s exactly why
+        elastic systems (Cassandra, DynamoDB, memcached) use it.
+      </Aha>
+
       {/* ── Strategy explainer ──────────────────────────────── */}
       <div className="mt-5 rounded-2xl border border-slate-200 bg-white/60 p-5 dark:border-white/10 dark:bg-white/[0.03]">
         <h3 className="text-base font-semibold text-slate-900 dark:text-white">{tr(info.name)}</h3>
@@ -291,6 +337,48 @@ export function ShardingLab() {
           </div>
         </div>
       </div>
+
+      {/* ── Closing: what to explore next ─────────────────────── */}
+      <section
+        className={[
+          "mt-8 rounded-2xl border p-6 transition-colors",
+          allDone
+            ? "border-emerald-400/40 bg-emerald-500/5"
+            : "border-slate-200 bg-white/60 dark:border-white/10 dark:bg-white/[0.03]",
+        ].join(" ")}
+      >
+        <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+          {allDone ? "🎉 You've seen how data splits — and what it costs to move it." : "Splitting data raises a new question"}
+        </h2>
+        <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+          Now each shard holds the only copy of its slice — so if one shard dies, that data
+          is gone, and a popular shard becomes a bottleneck. The answer is to keep copies.
+          These modules continue the story:
+        </p>
+        <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {[
+            {
+              fix: "Replication",
+              desc: "Keep multiple copies of each shard so it survives a failure and can serve more reads.",
+              href: "/labs/replication",
+            },
+            {
+              fix: "Load Balancer",
+              desc: "Spread incoming requests across the machines that hold your shards and replicas.",
+              href: "/labs/load-balancer",
+            },
+          ].map((s) => (
+            <Link
+              key={s.fix}
+              href={s.href}
+              className="group rounded-xl border border-slate-200 bg-white p-4 transition-all hover:-translate-y-1 hover:border-indigo-300 hover:shadow-lg hover:shadow-indigo-500/10 dark:border-white/10 dark:bg-white/[0.03] dark:hover:border-indigo-400/40"
+            >
+              <p className="font-semibold text-slate-900 dark:text-white">{s.fix} →</p>
+              <p className="mt-1 text-xs leading-relaxed text-slate-500 dark:text-slate-400">{s.desc}</p>
+            </Link>
+          ))}
+        </div>
+      </section>
     </LabShell>
   );
 }
