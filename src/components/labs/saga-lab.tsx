@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useApp } from "@/components/providers";
 import { LabShell } from "@/components/lab-shell";
+import { TryIt, Aha, MissionTracker } from "@/components/labs/ux";
 import type { Localized } from "@/lib/types";
 
 type StepState = "idle" | "running" | "done" | "failed" | "compensating" | "compensated";
@@ -52,6 +54,10 @@ export function SagaLab() {
   const [status, setStatus] = useState<"idle" | "running" | "success" | "rolledback">("idle");
   const [log, setLog] = useState<LogEntry[]>([]);
 
+  // ── gamification: commit, roll back, and fully unwind ───────────────
+  const [missions, setMissions] = useState({ committed: false, rolledback: false, fullUnwind: false });
+  const allDone = missions.committed && missions.rolledback && missions.fullUnwind;
+
   const failAtRef = useRef(failAt);
   useEffect(() => void (failAtRef.current = failAt), [failAt]);
   const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
@@ -66,8 +72,17 @@ export function SagaLab() {
 
   // Recursive timed steppers — plain (hoisted) functions so they can call
   // themselves; only ever invoked from event handlers / timeouts.
+  function markRolledBack() {
+    setMissions((m) => {
+      const next = { ...m };
+      next.rolledback = true;
+      if (failAtRef.current === STEPS.length - 1) next.fullUnwind = true;
+      return next.rolledback === m.rolledback && next.fullUnwind === m.fullUnwind ? m : next;
+    });
+  }
+
   function compensate(j: number) {
-    if (j < 0) { setStatus("rolledback"); return; }
+    if (j < 0) { setStatus("rolledback"); markRolledBack(); return; }
     setStep(j, "compensating");
     addLog("comp", j);
     later(() => { setStep(j, "compensated"); addLog("compdone", j); compensate(j - 1); });
@@ -81,12 +96,12 @@ export function SagaLab() {
         setStep(i, "failed");
         addLog("fail", i);
         if (i - 1 >= 0) compensate(i - 1);
-        else setStatus("rolledback");
+        else { setStatus("rolledback"); markRolledBack(); }
       } else {
         setStep(i, "done");
         addLog("ok", i);
         if (i < STEPS.length - 1) forward(i + 1);
-        else setStatus("success");
+        else { setStatus("success"); setMissions((m) => (m.committed ? m : { ...m, committed: true })); }
       }
     });
   }
@@ -124,10 +139,20 @@ export function SagaLab() {
       title={{ en: "Saga Coordinator", ar: "منسّق الـ Saga" }}
       difficulty="Expert"
       intro={{
-        en: "A checkout spans several services. A saga runs them as a chain of local steps — and if one fails, it undoes the earlier ones with compensating transactions instead of a global rollback. Choose a step to fail and watch the rollback ripple backwards.",
-        ar: "عملية الشراء تمتدّ عبر عدة خدمات. الـ Saga ينفّذها كسلسلة خطوات محلية — وإن فشلت واحدة، يتراجع عن السابقة عبر معاملات تعويضية بدل تراجع عام. اختر خطوة لتفشل وشاهد التراجع يرتدّ للخلف.",
+        en: "The problem: a checkout touches four separate services — order, inventory, payment, shipping — each with its own database. You can't wrap them in one transaction, and holding a lock across all of them over the network would be a nightmare. So what happens if payment succeeds but shipping fails? The Saga pattern: run them as a chain of local steps, and if any step fails, undo the completed ones with compensating actions (refund, release, cancel) in reverse. Run the three experiments below.",
+        ar: "المشكلة: عملية الشراء بتلمس أربع خدمات منفصلة — الطلب، المخزون، الدفع، الشحن — كل وحدة إلها قاعدة بياناتها. ما فيك تلفّهم بمعاملة وحدة، وإمساك قفل عبر كلهم على الشبكة كابوس. فشو بيصير إذا الدفع نجح بس الشحن فشل؟ نمط الـ Saga: شغّلهم كسلسلة خطوات محلية، وإذا فشلت خطوة، تراجَع عن المكتملة بإجراءات تعويضية (ردّ، تحرير، إلغاء) بالعكس. جرّب التجارب الثلاث تحت.",
       }}
     >
+      {/* ── Sticky mission tracker ────────────────────────────── */}
+      <MissionTracker
+        title="Experiments"
+        missions={[
+          { label: "Commit (all succeed)", done: missions.committed },
+          { label: "Force a rollback", done: missions.rolledback },
+          { label: "Fail the last step", done: missions.fullUnwind },
+        ]}
+      />
+
       {/* ── Controls ─────────────────────────────────────────── */}
       <div className="flex flex-wrap items-end gap-4 rounded-2xl border border-slate-200 bg-white/60 p-4 dark:border-white/10 dark:bg-white/[0.03]">
         <label className="flex flex-col gap-1.5">
@@ -142,6 +167,14 @@ export function SagaLab() {
         </button>
         <button type="button" onClick={reset} className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-500 hover:bg-slate-100 dark:border-white/10 dark:text-slate-400 dark:hover:bg-white/5">↺ {tr(L.reset)}</button>
       </div>
+
+      <TryIt
+        items={[
+          <>Set <b>{tr(L.failAt)}</b> to <b>{tr(L.none)}</b> and press <b>▶ {tr(L.run)}</b> — all four steps go green.</>,
+          <>Now set it to fail on <b>3. {tr(STEPS[2].name)}</b> and run — watch steps 1–2 undo in reverse (↩).</>,
+          <>Set it to fail on the <b>last</b> step (<b>4. {tr(STEPS[3].name)}</b>) — every earlier step compensates.</>,
+        ]}
+      />
 
       {/* ── Steps ────────────────────────────────────────────── */}
       <div className="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-4">
@@ -166,6 +199,20 @@ export function SagaLab() {
         {status === "idle" && <span className="text-sm text-slate-400">{tr(L.idleHint)}</span>}
       </div>
 
+      <Aha show={missions.committed}>
+        Each step ran on its own service and committed locally — no global lock held across the
+        network the whole time. When every step succeeds, the saga is simply done. The catch
+        is that there&apos;s a window where some steps are committed and others aren&apos;t yet, which is
+        exactly what compensation handles.
+      </Aha>
+      <Aha show={missions.rolledback}>
+        A step failed, so the saga walked <i>backwards</i> and ran each completed step&apos;s
+        compensating action in reverse order. Note these aren&apos;t a database rollback — payment
+        was really charged, so its compensation is a real <i>refund</i>. Saga gives you eventual
+        consistency through business-level undo, not ACID atomicity. (Fail step 1 and there&apos;s
+        nothing to undo — compensation only touches <i>completed</i> steps.)
+      </Aha>
+
       {/* ── Log ──────────────────────────────────────────────── */}
       <div className="mt-5 rounded-2xl border border-slate-200 bg-white/60 p-5 dark:border-white/10 dark:bg-white/[0.03]">
         <h3 className="mb-3 text-sm font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{tr(L.log)}</h3>
@@ -184,6 +231,48 @@ export function SagaLab() {
       <p className="mt-5 rounded-2xl border border-slate-200 bg-white/60 p-5 text-sm leading-relaxed text-slate-600 dark:border-white/10 dark:bg-white/[0.03] dark:text-slate-400">
         {tr(L.about)}
       </p>
+
+      {/* ── Closing: what to explore next ─────────────────────── */}
+      <section
+        className={[
+          "mt-8 rounded-2xl border p-6 transition-colors",
+          allDone
+            ? "border-emerald-400/40 bg-emerald-500/5"
+            : "border-slate-200 bg-white/60 dark:border-white/10 dark:bg-white/[0.03]",
+        ].join(" ")}
+      >
+        <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+          {allDone ? "🎉 You've committed, rolled back, and fully unwound a saga." : "How do the steps actually talk to each other?"}
+        </h2>
+        <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+          A saga is usually wired together with events, and each step is a remote call that can
+          fail or time out — so it leans on the patterns from earlier modules. These continue
+          the story:
+        </p>
+        <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {[
+            {
+              fix: "Messaging & Pub/Sub",
+              desc: "Each saga step often emits an event that triggers the next — the queue is the saga's backbone.",
+              href: "/labs/messaging",
+            },
+            {
+              fix: "Fault Tolerance",
+              desc: "A failing step needs timeouts, retries and idempotency before you give up and compensate.",
+              href: "/labs/fault-tolerance",
+            },
+          ].map((s) => (
+            <Link
+              key={s.fix}
+              href={s.href}
+              className="group rounded-xl border border-slate-200 bg-white p-4 transition-all hover:-translate-y-1 hover:border-indigo-300 hover:shadow-lg hover:shadow-indigo-500/10 dark:border-white/10 dark:bg-white/[0.03] dark:hover:border-indigo-400/40"
+            >
+              <p className="font-semibold text-slate-900 dark:text-white">{s.fix} →</p>
+              <p className="mt-1 text-xs leading-relaxed text-slate-500 dark:text-slate-400">{s.desc}</p>
+            </Link>
+          ))}
+        </div>
+      </section>
     </LabShell>
   );
 }
