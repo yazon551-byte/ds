@@ -163,7 +163,7 @@ export const modules: ModuleMeta[] = [
     category: "advanced",
     difficulty: "Intermediate",
     icon: "🚦",
-    status: "soon",
+    status: "ready",
   },
 ];
 
