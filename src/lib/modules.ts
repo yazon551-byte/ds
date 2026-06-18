@@ -99,7 +99,7 @@ export const modules: ModuleMeta[] = [
     category: "data",
     difficulty: "Advanced",
     icon: "🧩",
-    status: "soon",
+    status: "ready",
   },
   {
     slug: "replication",
