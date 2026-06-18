@@ -1,8 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useApp } from "@/components/providers";
 import { LabShell } from "@/components/lab-shell";
+import { TryIt, Aha, MissionTracker } from "@/components/labs/ux";
 import type { Localized } from "@/lib/types";
 
 type Algo = "token" | "leaky";
@@ -56,6 +58,10 @@ export function RateLimiterLab() {
   const [reqRate, setReqRate] = useState(DEFAULTS.reqRate);
   const [running, setRunning] = useState(true);
 
+  // ── gamification: overflow the limiter and compare the two algorithms ─
+  const [missions, setMissions] = useState({ rejected: false, burst: false, compared: false });
+  const allDone = missions.rejected && missions.burst && missions.compared;
+
   const algoRef = useRef(algo);
   const capRef = useRef(capacity);
   const rateRef = useRef(rate);
@@ -93,6 +99,7 @@ export function RateLimiterLab() {
       } else {
         rejectedRef.current++;
         pushRecent(false);
+        setMissions((m) => (m.rejected ? m : { ...m, rejected: true }));
       }
     } else {
       if (queueRef.current < capRef.current) {
@@ -101,6 +108,7 @@ export function RateLimiterLab() {
       } else {
         rejectedRef.current++;
         pushRecent(false); // overflow
+        setMissions((m) => (m.rejected ? m : { ...m, rejected: true }));
       }
     }
   }, []);
@@ -186,17 +194,27 @@ export function RateLimiterLab() {
       title={{ en: "Rate Limiter", ar: "محدّد المعدّل" }}
       difficulty="Intermediate"
       intro={{
-        en: "Protect a server from being overwhelmed. Flood it with traffic and watch the limiter let requests through or reject them with HTTP 429. Token Bucket allows short bursts; Leaky Bucket forces a perfectly steady output.",
-        ar: "احمِ الخادم من الإغراق. أغرقه بالترافيك وشاهد المحدِّد يسمح للطلبات أو يرفضها بـ HTTP 429. «دلو الرموز» يسمح بدفعات قصيرة؛ و«الدلو المثقوب» يفرض خرجاً ثابتاً تماماً.",
+        en: "The problem: clients (or a runaway script) can send far more requests than your server can handle, and a flood takes everyone down. The fix is a rate limiter standing at the door: it lets requests through up to a set rate and rejects the rest with HTTP 429 — sacrificing a few to protect the many. Token Bucket allows short bursts; Leaky Bucket forces a perfectly steady output. Run the three experiments below to feel the difference.",
+        ar: "المشكلة: العملاء (أو سكربت فالت) ممكن يبعتوا طلبات أكتر بكتير مما يتحمّل الخادم، والطوفان بيوقّع الكل. الحل محدّد معدّل واقف عالباب: بيسمح للطلبات لحدّ معدّل معيّن ويرفض الباقي بـ HTTP 429 — بيضحّي بالقليل ليحمي الكثير. «دلو الرموز» بيسمح بدفعات قصيرة؛ و«الدلو المثقوب» بيفرض خرج ثابت تماماً. جرّب التجارب الثلاث تحت لتحسّ بالفرق.",
       }}
     >
+      {/* ── Sticky mission tracker ────────────────────────────── */}
+      <MissionTracker
+        title="Experiments"
+        missions={[
+          { label: "Trigger a 429", done: missions.rejected },
+          { label: "Fire a burst", done: missions.burst },
+          { label: "Compare both buckets", done: missions.compared },
+        ]}
+      />
+
       {/* ── Controls ─────────────────────────────────────────── */}
       <div className="flex flex-wrap items-end gap-5 rounded-2xl border border-slate-200 bg-white/60 p-4 dark:border-white/10 dark:bg-white/[0.03]">
         <div className="flex flex-col gap-1.5">
           <span className="text-xs font-medium text-slate-500 dark:text-slate-400">{tr(L.algo)}</span>
           <div className="flex gap-1.5">
             {(["token", "leaky"] as Algo[]).map((a) => (
-              <button key={a} type="button" onClick={() => { setAlgo(a); }} className={["rounded-lg px-3 py-2 text-sm font-medium transition-colors", algo === a ? "bg-indigo-500 text-white" : "border border-slate-200 text-slate-700 hover:bg-slate-100 dark:border-white/10 dark:text-slate-200 dark:hover:bg-white/5"].join(" ")}>
+              <button key={a} type="button" onClick={() => { setAlgo(a); if (a === "leaky") setMissions((m) => (m.compared ? m : { ...m, compared: true })); }} className={["rounded-lg px-3 py-2 text-sm font-medium transition-colors", algo === a ? "bg-indigo-500 text-white" : "border border-slate-200 text-slate-700 hover:bg-slate-100 dark:border-white/10 dark:text-slate-200 dark:hover:bg-white/5"].join(" ")}>
                 {a === "token" ? tr(L.token) : tr(L.leaky)}
               </button>
             ))}
@@ -221,10 +239,18 @@ export function RateLimiterLab() {
             {running ? `⏸ ${tr(L.pause)}` : `▶ ${tr(L.auto)}`}
           </button>
           <button type="button" onClick={() => sendMany(1)} className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 dark:border-white/10 dark:text-slate-200 dark:hover:bg-white/5">{tr(L.send1)}</button>
-          <button type="button" onClick={() => sendMany(12)} className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 dark:border-white/10 dark:text-slate-200 dark:hover:bg-white/5">{tr(L.burst)}</button>
+          <button type="button" onClick={() => { sendMany(12); setMissions((m) => (m.burst ? m : { ...m, burst: true })); }} className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 dark:border-white/10 dark:text-slate-200 dark:hover:bg-white/5">{tr(L.burst)}</button>
           <button type="button" onClick={reset} className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-500 hover:bg-slate-100 dark:border-white/10 dark:text-slate-400 dark:hover:bg-white/5">↺ {tr(L.reset)}</button>
         </div>
       </div>
+
+      <TryIt
+        items={[
+          <>Drag <b>{tr(L.reqRate)}</b> up past the <b>{isToken ? tr(L.refill) : tr(L.leak)}</b> rate and watch red <b>429</b> marks appear in <i>{tr(L.recent)}</i>.</>,
+          <>Pause auto traffic, then hit <b>{tr(L.burst)}</b> — Token Bucket lets a whole burst through at once (up to its capacity).</>,
+          <>Switch to <b>{tr(L.leaky)}</b> and burst again — the output stays perfectly smooth instead.</>,
+        ]}
+      />
 
       {/* ── Bucket + stats ───────────────────────────────────── */}
       <div className="mt-5 grid grid-cols-1 gap-5 sm:grid-cols-[auto_1fr]">
@@ -272,6 +298,61 @@ export function RateLimiterLab() {
           </p>
         </div>
       </div>
+
+      <Aha show={missions.rejected}>
+        Requests came in faster than the bucket could refill/drain, so the limiter started
+        rejecting with <b>HTTP 429 (Too Many Requests)</b>. That&apos;s deliberate: dropping a few
+        requests keeps the server alive for everyone else, instead of letting a flood crash it.
+        Clients are expected to back off and retry later.
+      </Aha>
+      <Aha show={missions.compared}>
+        Same flood, two shapes. <b>Token Bucket</b> saves up unused capacity, so it can let a
+        sudden burst straight through (great for bursty-but-fair traffic). <b>Leaky Bucket</b>
+        drains at a fixed rate no matter what, so the output is perfectly steady — it never
+        lets a burst reach the server. Pick bursty-friendly vs strictly-smooth based on what
+        you&apos;re protecting.
+      </Aha>
+
+      {/* ── Closing: what to explore next ─────────────────────── */}
+      <section
+        className={[
+          "mt-8 rounded-2xl border p-6 transition-colors",
+          allDone
+            ? "border-emerald-400/40 bg-emerald-500/5"
+            : "border-slate-200 bg-white/60 dark:border-white/10 dark:bg-white/[0.03]",
+        ].join(" ")}
+      >
+        <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+          {allDone ? "🎉 You've shed load and compared both buckets." : "Limiting is one of several ways to survive overload"}
+        </h2>
+        <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+          A rate limiter caps the <i>input</i>. But you also need to spread load across servers,
+          and stop calling a service that&apos;s already drowning. These continue the story:
+        </p>
+        <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {[
+            {
+              fix: "Load Balancer",
+              desc: "Spread accepted requests across a pool so no single server takes the whole flood.",
+              href: "/labs/load-balancer",
+            },
+            {
+              fix: "Fault Tolerance",
+              desc: "A circuit breaker sheds load too — it stops calling a service that's already overwhelmed.",
+              href: "/labs/fault-tolerance",
+            },
+          ].map((s) => (
+            <Link
+              key={s.fix}
+              href={s.href}
+              className="group rounded-xl border border-slate-200 bg-white p-4 transition-all hover:-translate-y-1 hover:border-indigo-300 hover:shadow-lg hover:shadow-indigo-500/10 dark:border-white/10 dark:bg-white/[0.03] dark:hover:border-indigo-400/40"
+            >
+              <p className="font-semibold text-slate-900 dark:text-white">{s.fix} →</p>
+              <p className="mt-1 text-xs leading-relaxed text-slate-500 dark:text-slate-400">{s.desc}</p>
+            </Link>
+          ))}
+        </div>
+      </section>
     </LabShell>
   );
 }
