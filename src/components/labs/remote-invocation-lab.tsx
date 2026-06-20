@@ -19,7 +19,7 @@ const L = {
   network: { en: "Network", ar: "الشبكة" },
   result: { en: "Result returned", ar: "عادت النتيجة" },
   error: { en: "ConnectException — server unreachable (partial failure)", ar: "ConnectException — الخادم غير قابل للوصول (فشل جزئي)" },
-  rtt: { en: "Round-trip time", ar: "زمن الذهاب والإياب" },
+  rtt: { en: "Total time", ar: "الزمن الكلي" },
   payload: { en: "Payload size", ar: "حجم الحمولة" },
   format: { en: "Format", ar: "الصيغة" },
   transport: { en: "Transport", ar: "النقل" },

@@ -15,7 +15,7 @@ import {
 import type { Localized } from "@/lib/types";
 
 const HB_INTERVAL = 1300; // ms between heartbeats
-const BASE_BACKOFF = 800; // ms
+const BASE_BACKOFF = 1000; // ms — matches the explainer's "1s → 2s → 4s…" sequence
 const CAP_BACKOFF = 8000; // ms
 
 function latency() {

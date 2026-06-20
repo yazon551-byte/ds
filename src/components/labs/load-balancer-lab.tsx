@@ -271,6 +271,7 @@ export function LoadBalancerLab() {
         requestsRef.current = requestsRef.current.filter((r) => r.server !== index);
         s.down = true;
         s.active = 0;
+        droppedRef.current += lost; // in-flight requests on the crashed server are lost
         pushLog({ kind: "down", server: s.name, color: s.color, lost });
         setMissions((m) => ({ ...m, crash: true }));
       } else {

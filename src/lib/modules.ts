@@ -53,8 +53,8 @@ export const modules: ModuleMeta[] = [
     slug: "load-balancer",
     title: { en: "Load Balancer Lab", ar: "مختبر موازنة الأحمال" },
     tagline: {
-      en: "Send traffic through Round Robin, Least Connections, Power of Two, Weighted & Consistent Hashing — and watch it route live.",
-      ar: "وزّع الترافيك عبر Round Robin و Least Connections و Power of Two والأوزان و Consistent Hashing — وشوف التوزيع حيّ.",
+      en: "Send traffic through Round Robin, Weighted, Least Connections, Power of Two, Latency-based & Random — and watch it route live.",
+      ar: "وزّع الترافيك عبر Round Robin والأوزان و Least Connections و Power of Two و Latency و Random — وشوف التوزيع حيّ.",
     },
     category: "load-balancing",
     difficulty: "Intermediate",
@@ -133,8 +133,8 @@ export const modules: ModuleMeta[] = [
     slug: "raft",
     title: { en: "Raft Consensus", ar: "توافق Raft" },
     tagline: {
-      en: "Leader election, terms and log replication across a 3-node cluster with quorum voting.",
-      ar: "انتخاب القائد، والفترات، ونسخ السجل عبر عنقود من 3 عُقَد بتصويت الأغلبية.",
+      en: "Leader election, terms and log replication across a 5-node cluster with majority voting.",
+      ar: "انتخاب القائد، والفترات، ونسخ السجل عبر عنقود من 5 عُقَد بتصويت الأغلبية.",
     },
     category: "advanced",
     difficulty: "Expert",

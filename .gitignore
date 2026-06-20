@@ -28,6 +28,9 @@
 .idea/
 .vscode/
 
+# internal working notes / reviews (kept local, not published)
+notes/
+
 # debug
 npm-debug.log*
 yarn-debug.log*

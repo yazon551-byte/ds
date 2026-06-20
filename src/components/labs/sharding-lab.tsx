@@ -11,12 +11,12 @@ import {
   hashInt,
   keyAngle,
   mapShard,
-  movementPct,
   rangeBounds,
   ringNodes,
   sampleKeys,
   shardStrategies,
   shardStrategyInfo,
+  statMovementPct,
   type ShardStrategy,
 } from "@/lib/labs/sharding";
 import type { Localized } from "@/lib/types";
@@ -34,7 +34,7 @@ const L = {
   addShard: { en: "Add a shard", ar: "إضافة قسم" },
   removeShard: { en: "Remove a shard", ar: "حذف قسم" },
   moves: { en: "of keys move", ar: "من المفاتيح تتحرّك" },
-  youChoose: { en: "You choose what moves (manual).", ar: "أنت تختار ما يتحرّك (يدوي)." },
+  youChoose: { en: "Lookup table — placement is explicit, not computed from the key.", ar: "جدول بحث — التوزيع صريح، مش محسوب من المفتاح." },
   compare: { en: "Hash vs Consistent — keys moved when adding 1 shard:", ar: "تجزئة مقابل ثابتة — المفاتيح المتحرّكة عند إضافة قسم:" },
   how: { en: "How it works", ar: "كيف يعمل" },
   pro: { en: "Strength", ar: "القوة" },
@@ -97,8 +97,11 @@ export function ShardingLab() {
   if (validKey) {
     const k = parsedKey;
     if (strategy === "directory") {
-      targetShard = directory[k] ?? leastLoaded(counts);
-      steps = `directory[${k}] = ${tr(L.shard)} ${targetShard}`;
+      const inTable = directory[k] !== undefined;
+      targetShard = inTable ? directory[k] : leastLoaded(counts);
+      steps = inTable
+        ? `directory[${k}] = ${tr(L.shard)} ${targetShard}`
+        : `${k} ${lang === "ar" ? "غير مُدرج → الأقل تحميلاً" : "not in table → least-loaded"} → ${tr(L.shard)} ${targetShard}`;
     } else if (strategy === "range") {
       targetShard = mapShard("range", k, n);
       const b = bounds[targetShard];
@@ -113,10 +116,10 @@ export function ShardingLab() {
   }
 
   // ── rebalancing insight ─────────────────────────────────────────────
-  const addMove = strategy === "directory" ? null : movementPct(strategy, sampleKeys, n, n + 1);
-  const removeMove = strategy === "directory" || n <= 1 ? null : movementPct(strategy, sampleKeys, n, n - 1);
-  const hashMove = Math.round(movementPct("hash", sampleKeys, n, n + 1));
-  const consistentMove = Math.round(movementPct("consistent", sampleKeys, n, n + 1));
+  const addMove = strategy === "directory" ? null : statMovementPct(strategy, n, n + 1);
+  const removeMove = strategy === "directory" || n <= 1 ? null : statMovementPct(strategy, n, n - 1);
+  const hashMove = Math.round(statMovementPct("hash", n, n + 1));
+  const consistentMove = Math.round(statMovementPct("consistent", n, n + 1));
 
   const info = shardStrategyInfo(strategy);
 

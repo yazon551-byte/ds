@@ -91,8 +91,8 @@ export const patterns: PatternInfo[] = [
     key: "heartbeat",
     title: { en: "Heartbeat / Health Check", ar: "النبض / فحص الصحّة" },
     body: {
-      en: "A monitor pings the service on a fixed interval. Miss too many beats and it's marked UNHEALTHY and pulled out of rotation; recover and it's marked healthy again.",
-      ar: "مراقب ينبض للخدمة على فترات ثابتة. إن غابت نبضات كثيرة تُعلَّم «غير سليمة» وتُخرَج من الخدمة؛ وعند التعافي تُعلَّم سليمة.",
+      en: "A monitor pings the service on a fixed interval. Miss too many recent beats and it's flagged UNHEALTHY (here that's a status indicator; in production it would be pulled out of rotation), and marked healthy again once beats recover.",
+      ar: "مراقب ينبض للخدمة على فترات ثابتة. إن غابت نبضات حديثة كثيرة تُعلَّم «غير سليمة» (هون مؤشّر حالة فقط؛ بالإنتاج كانت تُخرَج من الخدمة)، وتُعلَّم سليمة لمّا ترجع النبضات.",
     },
   },
 ];

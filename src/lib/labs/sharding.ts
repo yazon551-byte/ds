@@ -105,6 +105,49 @@ export function movementPct(
   return (moved / keys.length) * 100;
 }
 
+// ── Representative rebalancing statistics ─────────────────────────────────
+// The on-screen ring deliberately uses a small key set + few virtual nodes so
+// it stays legible. That sample is too small for the "hash reshuffles ~all,
+// consistent moves ~1/N" thesis to hold at low shard counts. So the *displayed
+// percentages* are computed here over a large key population with many virtual
+// nodes on a high-resolution ring — i.e. how the algorithms behave at scale.
+const STAT_RING = 100000;
+const STAT_VIRTUAL = 80;
+const STAT_KEYS: number[] = Array.from({ length: 360 }, (_, i) => i * 271 + 11);
+
+function statRing(n: number): VNode[] {
+  const nodes: VNode[] = [];
+  for (let s = 0; s < n; s++) {
+    for (let v = 0; v < STAT_VIRTUAL; v++) {
+      nodes.push({ angle: hashInt(s * 7919 + v * 104729 + 17) % STAT_RING, shard: s });
+    }
+  }
+  return nodes.sort((a, b) => a.angle - b.angle);
+}
+function statConsistent(key: number, ring: VNode[]): number {
+  const a = hashInt(key * 2654435761) % STAT_RING;
+  for (const node of ring) if (node.angle >= a) return node.shard;
+  return ring[0].shard;
+}
+
+/** % of keys that move from n→newN shards, measured over a large population. */
+export function statMovementPct(strategy: ShardStrategy, n: number, newN: number): number {
+  if (newN < 1 || n < 1) return 0;
+  let moved = 0;
+  if (strategy === "consistent") {
+    const ringA = statRing(n);
+    const ringB = statRing(newN);
+    for (const k of STAT_KEYS) {
+      if (statConsistent(k, ringA) !== statConsistent(k, ringB)) moved++;
+    }
+  } else {
+    for (const k of STAT_KEYS) {
+      if (mapShard(strategy, k, n) !== mapShard(strategy, k, newN)) moved++;
+    }
+  }
+  return (moved / STAT_KEYS.length) * 100;
+}
+
 export interface StrategyInfo {
   id: ShardStrategy;
   name: Localized;
@@ -144,10 +187,10 @@ export const shardStrategies: StrategyInfo[] = [
     id: "directory",
     name: { en: "Directory-based", ar: "حسب الدليل" },
     how: {
-      en: "A central lookup table explicitly maps each key → shard. You decide (and can change) any mapping.",
-      ar: "جدول بحث مركزي يربط كل مفتاح → قسم صراحةً. أنت تقرّر (وتغيّر) أي ربط.",
+      en: "A central lookup table maps each key → shard explicitly — any key can live on any shard, independent of its value. Here the table is precomputed and kept balanced.",
+      ar: "جدول بحث مركزي يربط كل مفتاح → قسم صراحةً — أي مفتاح ممكن يكون على أي قسم بغضّ النظر عن قيمته. هون الجدول محسوب مسبقاً ومتوازن.",
     },
-    pro: { en: "Total flexibility; move exactly what you want.", ar: "مرونة كاملة؛ تنقل ما تريد بالضبط." },
+    pro: { en: "Total placement freedom — any key can go on any shard.", ar: "حرية كاملة بالتوزيع — أي مفتاح ممكن يروح لأي قسم." },
     con: {
       en: "The directory is a single point of failure + an extra lookup hop.",
       ar: "الدليل نقطة فشل وحيدة + قفزة بحث إضافية.",

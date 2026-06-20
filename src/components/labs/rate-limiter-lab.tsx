@@ -145,6 +145,14 @@ export function RateLimiterLab() {
     setSnap(buildSnapshot());
   }, [handleRequest, buildSnapshot]);
 
+  // Lowering capacity must clamp the live token count / leaky queue, otherwise
+  // the bucket shows impossible states like "14 / 3". Clamp the refs here; the
+  // animation loop repaints the snapshot within ~60ms.
+  useEffect(() => {
+    if (tokensRef.current > capacity) tokensRef.current = capacity;
+    if (queueRef.current > capacity) queueRef.current = capacity;
+  }, [capacity]);
+
   // ── loop ───────────────────────────────────────────────────────────
   useEffect(() => {
     let raf = 0;

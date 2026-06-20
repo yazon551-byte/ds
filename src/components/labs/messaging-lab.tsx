@@ -23,7 +23,7 @@ const L = {
   queued: { en: "queued", ar: "بالطابور" },
   delivered: { en: "delivered", ar: "مُسلّمة" },
   published: { en: "Published", ar: "منشورة" },
-  deliveredM: { en: "Delivered", ar: "مُسلّمة" },
+  deliveredM: { en: "Deliveries", ar: "تسليمات" },
   retried: { en: "Retried", ar: "أُعيدت" },
   dead: { en: "Dead-lettered", ar: "ميتة" },
   dlq: { en: "Dead-Letter Queue", ar: "طابور الرسائل الميتة" },
@@ -130,10 +130,11 @@ export function MessagingLab() {
   const [snap, setSnap] = useState<Snapshot>(initialSnapshot);
 
   const publish = useCallback((poison: boolean) => {
+    // backpressure: if any subscriber's queue is full, refuse the publish
+    // instead of silently dropping it for that subscriber.
+    if (subsRef.current.some((s) => s.queue.length >= 60)) return;
     const id = msgIdRef.current++;
-    for (const s of subsRef.current) {
-      if (s.queue.length < 60) s.queue.push({ msgId: id, poison, attempts: 0 });
-    }
+    for (const s of subsRef.current) s.queue.push({ msgId: id, poison, attempts: 0 });
     mRef.current.published++;
     setMissions((m) => {
       if (poison) return m.poison ? m : { ...m, poison: true };
@@ -178,12 +179,12 @@ export function MessagingLab() {
       if (runningRef.current) {
         spawnAccRef.current += (dt / 1000) * rateRef.current;
         while (spawnAccRef.current >= 1) {
+          // backpressure: a full subscriber queue pauses publishing instead of dropping
+          if (subsRef.current.some((s) => s.queue.length >= 60)) { spawnAccRef.current = 0; break; }
           spawnAccRef.current -= 1;
           const poison = Math.random() < 0.18;
           const id = msgIdRef.current++;
-          for (const s of subsRef.current) {
-            if (s.queue.length < 60) s.queue.push({ msgId: id, poison, attempts: 0 });
-          }
+          for (const s of subsRef.current) s.queue.push({ msgId: id, poison, attempts: 0 });
           m.published++;
         }
       }

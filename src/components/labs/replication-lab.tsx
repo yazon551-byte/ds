@@ -174,6 +174,9 @@ export function ReplicationLab() {
       lostRef.current += lost;
       writesRef.current = writesRef.current.slice(0, appliedRef.current[best]); // unreplicated writes are gone
       setMissions((m) => (m.lost ? m : { ...m, lost: true }));
+    } else if (modeRef.current === "active" || syncRef.current) {
+      // durable failover: a live replica was promoted with zero lost writes
+      setMissions((m) => (m.safe ? m : { ...m, safe: true }));
     }
     primaryRef.current = best;
     setSnap(buildSnapshot(now));
@@ -246,7 +249,7 @@ export function ReplicationLab() {
           <span className="text-xs font-medium text-slate-500 dark:text-slate-400">{tr(L.mode)}</span>
           <div className="flex gap-1.5">
             {(["passive", "active"] as Mode[]).map((m) => (
-              <button key={m} type="button" onClick={() => { setMode(m); if (m === "active") setMissions((x) => (x.safe ? x : { ...x, safe: true })); }} className={["rounded-lg px-3 py-2 text-sm font-medium transition-colors", mode === m ? "bg-indigo-500 text-white" : "border border-slate-200 text-slate-700 hover:bg-slate-100 dark:border-white/10 dark:text-slate-200 dark:hover:bg-white/5"].join(" ")}>
+              <button key={m} type="button" onClick={() => setMode(m)} className={["rounded-lg px-3 py-2 text-sm font-medium transition-colors", mode === m ? "bg-indigo-500 text-white" : "border border-slate-200 text-slate-700 hover:bg-slate-100 dark:border-white/10 dark:text-slate-200 dark:hover:bg-white/5"].join(" ")}>
                 {m === "active" ? tr(L.active) : tr(L.passive)}
               </button>
             ))}
@@ -258,7 +261,7 @@ export function ReplicationLab() {
             <span className="text-xs font-medium text-slate-500 dark:text-slate-400">&nbsp;</span>
             <div className="flex gap-1.5">
               {[false, true].map((s) => (
-                <button key={String(s)} type="button" onClick={() => { setSync(s); if (s) setMissions((x) => (x.safe ? x : { ...x, safe: true })); }} className={["rounded-lg px-3 py-2 text-sm font-medium transition-colors", sync === s ? "bg-cyan-500 text-white" : "border border-slate-200 text-slate-700 hover:bg-slate-100 dark:border-white/10 dark:text-slate-200 dark:hover:bg-white/5"].join(" ")}>
+                <button key={String(s)} type="button" onClick={() => setSync(s)} className={["rounded-lg px-3 py-2 text-sm font-medium transition-colors", sync === s ? "bg-cyan-500 text-white" : "border border-slate-200 text-slate-700 hover:bg-slate-100 dark:border-white/10 dark:text-slate-200 dark:hover:bg-white/5"].join(" ")}>
                   {s ? tr(L.sync) : tr(L.async)}
                 </button>
               ))}
