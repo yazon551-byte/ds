@@ -113,7 +113,8 @@ export function movementPct(
 // nodes on a high-resolution ring — i.e. how the algorithms behave at scale.
 const STAT_RING = 100000;
 const STAT_VIRTUAL = 80;
-const STAT_KEYS: number[] = Array.from({ length: 360 }, (_, i) => i * 271 + 11);
+// Keep keys inside KEY_SPACE so range-based stats are correct (range clamps to it).
+const STAT_KEYS: number[] = Array.from({ length: 360 }, (_, i) => Math.floor((i / 360) * KEY_SPACE));
 
 function statRing(n: number): VNode[] {
   const nodes: VNode[] = [];

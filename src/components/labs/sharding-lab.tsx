@@ -66,8 +66,8 @@ export function ShardingLab() {
   const [missions, setMissions] = useState({ traced: false, switched: false, resized: false });
   const allDone = missions.traced && missions.switched && missions.resized;
 
-  // directory mapping: an explicit lookup table (here, a balanced round-robin
-  // assignment) — the point is it's arbitrary and you control it.
+  // directory mapping: an explicit, precomputed lookup table (here a balanced
+  // round-robin assignment) — any key can map to any shard, independent of its value.
   const directory = useMemo(() => {
     const d: Record<number, number> = {};
     sampleKeys.forEach((k, i) => (d[k] = i % n));
